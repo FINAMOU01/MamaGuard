@@ -54,6 +54,11 @@ def home():
         "version": "2.0",
         "routes": {
             "GET  /": "Verifier que l'API fonctionne",
-            "POST /predict": "Prediction du risque prenatal"
+            "POST /predict": "Prediction du risque prenatal",
+            "POST /alert": "Declenchement escalade urgence",
+            "POST /sms": "Envoi SMS via Twilio",
+            "GET /sms/status": "Statut configuration Twilio",
+            "POST /remind": "Rappels de consultation",
+            "POST /sms/format": "Preview formatage SMS 160 car."
         }
     })
