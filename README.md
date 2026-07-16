@@ -140,24 +140,29 @@ The system follows:
 MamaGuard/
 
 │
-├── backend/
-│   ├── api/
-│   ├── ai/
-│   └── README.md
+├── api/               # Flask REST API
 │
-├── mobile/
+├── flutter_app/       # Flutter mobile applications
 │   ├── mamaguard_patient/
-│   ├── mamaguard_doctor/
+│   └── mamaguard_doctor/
 │
-├── docs/
+├── ai/                # AI/ML model (Random Forest)
 │
-├── docker/
+├── admin/             # Admin panel
+│
+├── iot/               # IoT device integration
+│
+├── functions/         # Firebase Cloud Functions
+│
+├── docs/              # Documentation & assets
+│
+├── docker/            # Docker configurations
 │
 ├── .gitignore
 │
 ├── README.md
 │
-└── LICENSE
+└── docker-compose.yml
 ```
 
 ---
@@ -173,7 +178,7 @@ git clone https://github.com/yourusername/MamaGuard.git
 ### Backend
 
 ```bash
-cd backend/api
+cd api
 
 pip install -r requirements.txt
 
@@ -185,7 +190,7 @@ python app.py
 ### Mobile
 
 ```bash
-cd mobile/mamaguard_patient
+cd flutter_app/mamaguard_patient
 
 flutter pub get
 
