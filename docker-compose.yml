@@ -1,13 +1,47 @@
-version: '3.8'
-
 services:
   api:
     build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-    ports:
-      - "5000:5000"
+      context: ./api
+      dockerfile: Dockerfile
+    expose:
+      - "5000"
     volumes:
       - ./api:/app
-    environment:
-      - FLASK_ENV=development
+    env_file: .env
+    networks:
+      - mamaguard
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    expose:
+      - "5001"
+    volumes:
+      - ./admin:/app
+    env_file: .env
+    networks:
+      - mamaguard
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+      - admin
+    networks:
+      - mamaguard
+
+  redis:
+    image: redis:7-alpine
+    expose:
+      - "6379"
+    networks:
+      - mamaguard
+
+networks:
+  mamaguard:
+    driver: bridge
