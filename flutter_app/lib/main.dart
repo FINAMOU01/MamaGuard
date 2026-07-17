@@ -18,7 +18,7 @@ class MamaGuardApp extends StatelessWidget {
       title: 'MamaGuard',
       debugShowCheckedModeBanner: false,
       theme: mamaGuardTheme,
-      initialRoute: AppRoutes.splash,
+      initialRoute: AppRoutes.welcome,
       onGenerateRoute: AppRoutes.generateRoute,
     );
   }

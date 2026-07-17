@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import '../screens/auth/welcome_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../screens/patient/home_screen.dart';
+import '../screens/doctor/dashboard_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
 
-  static const String splash = '/';
+  static const String welcome = '/';
   static const String login = '/auth/login';
   static const String otp = '/auth/otp';
   static const String pin = '/auth/pin';
@@ -20,11 +24,21 @@ class AppRoutes {
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      case splash:
+      case welcome:
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          ),
+          builder: (_) => const WelcomeScreen(),
+        );
+      case login:
+        return MaterialPageRoute(
+          builder: (_) => const LoginScreen(),
+        );
+      case patientHome:
+        return MaterialPageRoute(
+          builder: (_) => const HomeScreen(),
+        );
+      case doctorDashboard:
+        return MaterialPageRoute(
+          builder: (_) => const DoctorDashboardScreen(),
         );
       default:
         return MaterialPageRoute(
