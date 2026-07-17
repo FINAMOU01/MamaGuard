@@ -59,6 +59,8 @@ def home():
             "POST /sms": "Envoi SMS via Twilio",
             "GET /sms/status": "Statut configuration Twilio",
             "POST /remind": "Rappels de consultation",
-            "POST /sms/format": "Preview formatage SMS 160 car."
+            "POST /sms/format": "Preview formatage SMS 160 car.",
+            "POST /alert/<id>/vu": "Marquer alerte comme vue",
+            "GET /alert/<id>": "Consulter une alerte"
         }
     })
