@@ -16,16 +16,28 @@ class WelcomeScreen extends StatelessWidget {
               const Spacer(flex: 2),
               // Logo
               Container(
-                width: 120,
-                height: 120,
+                width: 200,
+                height: 200,
                 decoration: BoxDecoration(
-                  color: AppConstants.primaryColor,
+                  color: AppConstants.backgroundColor,
                   shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4DD81B60),
+                      blurRadius: 20,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.pregnant_woman_rounded,
-                  size: 64,
-                  color: Colors.white,
+                padding: const EdgeInsets.all(20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),

@@ -7,3 +7,5 @@ gunicorn==23.0.0
 twilio==9.4.5
 firebase-admin==6.6.0
 APScheduler==3.10.4
+redis==5.2.1
+PyJWT==2.10.1

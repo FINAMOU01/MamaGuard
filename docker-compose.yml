@@ -3,10 +3,11 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
     volumes:
       - ./api:/app
+      - ./credentials:/app/credentials
     env_file: .env
     networks:
       - mamaguard

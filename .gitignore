@@ -46,3 +46,7 @@ firebase-debug.log
 *.serviceAccountKey.json
 google-services.json
 GoogleService-Info.plist
+
+# Functions
+functions/node_modules/
+functions/.env.yaml

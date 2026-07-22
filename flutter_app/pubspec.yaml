@@ -29,6 +29,13 @@ dependencies:
   fl_chart: ^0.70.2
   intl: ^0.20.2
 
+  # Launch external URLs
+  url_launcher: ^6.3.1
+
+  # Local notifications
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -36,3 +43,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/logo.png

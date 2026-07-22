@@ -6,11 +6,12 @@ class AppConstants {
   static const String appName = 'MamaGuard';
 
   // API
-  static const String apiBaseUrl = 'http://10.0.2.2:5000';
+  static const String apiBaseUrl = 'http://192.168.0.101:5000';
   static const String predictEndpoint = '/predict';
 
   // Colors
   static const Color primaryColor = Color(0xFFE91E63);
+  static const Color softPink = Color(0xFFFF7EB6);
   static const Color secondaryColor = Color(0xFFF06292);
   static const Color backgroundColor = Color(0xFFFCE4EC);
   static const Color normalColor = Color(0xFF4CAF50);
@@ -18,5 +19,5 @@ class AppConstants {
   static const Color criticalColor = Color(0xFFF44336);
 
   // Text
-  static const String appSubtitle = 'Votre santé, notre priorité';
+  static const String appSubtitle = 'Votre santé et celle de votre bébé méritent une attention de chaque instant';
 }
