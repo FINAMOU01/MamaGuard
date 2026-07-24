@@ -23,6 +23,7 @@ import '../screens/doctor/pending_screen.dart';
 import '../screens/doctor/dossier_screen.dart';
 import '../screens/doctor/appointment_screen.dart';
 import '../screens/doctor/teleconsultation_screen.dart';
+import '../screens/doctor/login_screen.dart';
 import '../screens/doctor/notification_screen.dart';
 import '../screens/doctor/activation_screen.dart';
 import '../screens/doctor/profile_screen.dart';
@@ -50,6 +51,7 @@ class AppRoutes {
   static const String patientAppointment = '/patient/appointment';
   static const String patientNotifications = '/patient/notifications';
   static const String doctorRegistration = '/doctor/registration';
+  static const String doctorLogin = '/doctor/login';
   static const String doctorPending = '/doctor/pending';
   static const String doctorDashboard = '/doctor/dashboard';
   static const String doctorDossier = '/doctor/dossier';
@@ -155,6 +157,10 @@ class AppRoutes {
       case doctorRegistration:
         return MaterialPageRoute(
           builder: (_) => const DoctorRegistrationScreen(),
+        );
+      case doctorLogin:
+        return MaterialPageRoute(
+          builder: (_) => const DoctorLoginScreen(),
         );
       case doctorPending:
         final args = settings.arguments as Map?;
