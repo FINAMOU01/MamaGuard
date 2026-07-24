@@ -78,7 +78,7 @@ class WelcomeScreen extends StatelessWidget {
                 height: 56,
                 child: OutlinedButton.icon(
                   onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.doctorDashboard),
+                      Navigator.pushNamed(context, AppRoutes.doctorRegistration),
                   icon: const Icon(Icons.medical_services),
                   label: const Text(
                     "Je suis un médecin",

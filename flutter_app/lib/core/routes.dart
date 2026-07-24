@@ -16,7 +16,16 @@ import '../screens/patient/history_screen.dart';
 import '../screens/patient/consultation_screen.dart';
 import '../screens/patient/reminder_screen.dart';
 import '../screens/patient/link_doctor_screen.dart';
+import '../screens/patient/notification_screen.dart';
 import '../screens/doctor/dashboard_screen.dart';
+import '../screens/doctor/registration_screen.dart';
+import '../screens/doctor/pending_screen.dart';
+import '../screens/doctor/dossier_screen.dart';
+import '../screens/doctor/appointment_screen.dart';
+import '../screens/doctor/teleconsultation_screen.dart';
+import '../screens/doctor/notification_screen.dart';
+import '../screens/doctor/activation_screen.dart';
+import '../screens/doctor/profile_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -39,9 +48,17 @@ class AppRoutes {
   static const String patientProfile = '/patient/profile';
   static const String patientContacts = '/patient/contacts';
   static const String patientAppointment = '/patient/appointment';
+  static const String patientNotifications = '/patient/notifications';
+  static const String doctorRegistration = '/doctor/registration';
+  static const String doctorPending = '/doctor/pending';
   static const String doctorDashboard = '/doctor/dashboard';
   static const String doctorDossier = '/doctor/dossier';
   static const String doctorAlert = '/doctor/alert';
+  static const String doctorAppointment = '/doctor/appointment';
+  static const String doctorTeleconsultation = '/doctor/teleconsultation';
+  static const String doctorProfile = '/doctor/profile';
+  static const String doctorNotifications = '/doctor/notifications';
+  static const String doctorActivation = '/doctor/activation';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -130,9 +147,77 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => LinkDoctorScreen(phone: args?['phone'] as String? ?? ''),
         );
-      case doctorDashboard:
+      case patientNotifications:
+        final args = settings.arguments as Map?;
         return MaterialPageRoute(
-          builder: (_) => const DoctorDashboardScreen(),
+          builder: (_) => NotificationScreen(phone: args?['phone'] as String? ?? ''),
+        );
+      case doctorRegistration:
+        return MaterialPageRoute(
+          builder: (_) => const DoctorRegistrationScreen(),
+        );
+      case doctorPending:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorPendingScreen(
+            name: args?['name'] as String? ?? '',
+            status: args?['status'] as String? ?? 'en_attente',
+          ),
+        );
+      case doctorDashboard:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorDashboardScreen(
+            phone: args?['phone'] as String? ?? '',
+          ),
+        );
+      case doctorDossier:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorDossierScreen(
+            phone: args?['phone'] as String? ?? '',
+            patientName: args?['name'] as String? ?? 'Patiente',
+          ),
+        );
+      case doctorAppointment:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorAppointmentScreen(
+            patientPhone: args?['phone'] as String? ?? '',
+            patientName: args?['name'] as String? ?? 'Patiente',
+            doctorName: args?['doctor_name'] as String? ?? 'Dr.',
+          ),
+        );
+      case doctorTeleconsultation:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorTeleconsultationScreen(
+            patientPhone: args?['phone'] as String? ?? '',
+            patientName: args?['name'] as String? ?? 'Patiente',
+            doctorName: args?['doctor_name'] as String? ?? 'Dr.',
+          ),
+        );
+      case doctorProfile:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorProfileScreen(
+            phone: args?['phone'] as String? ?? '',
+          ),
+        );
+      case doctorNotifications:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorNotificationScreen(
+            phone: args?['phone'] as String? ?? '',
+          ),
+        );
+      case doctorActivation:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => DoctorActivationScreen(
+            phone: args?['phone'] as String? ?? '',
+            name: args?['name'] as String? ?? '',
+          ),
         );
       default:
         return MaterialPageRoute(
