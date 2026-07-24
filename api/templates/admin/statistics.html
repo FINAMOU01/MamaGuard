@@ -1,0 +1,127 @@
+{% extends "admin/layout.html" %}
+{% block content %}
+
+<h4 class="fw-bold mb-4">Statistiques globales anonymes</h4>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card patients h-100">
+      <div class="card-body text-center">
+        <div class="fs-1">👩</div>
+        <div class="fs-2 fw-bold">{{ stats.patients_actifs }}</div>
+        <div class="text-muted small">Patient(e)s actives</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card validated h-100">
+      <div class="card-body text-center">
+        <div class="fs-1">✅</div>
+        <div class="fs-2 fw-bold">{{ stats.medecins_valides }}</div>
+        <div class="text-muted small">Médecins validés</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card pending h-100">
+      <div class="card-body text-center">
+        <div class="fs-1">⏳</div>
+        <div class="fs-2 fw-bold">{{ stats.medecins_en_attente }}</div>
+        <div class="text-muted small">Médecins en attente</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card h-100" style="border-left-color:#E91E63;">
+      <div class="card-body text-center">
+        <div class="fs-1">📹</div>
+        <div class="fs-2 fw-bold">{{ stats.consultations_semaine }}</div>
+        <div class="text-muted small">Téléconsultations (7j)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0 rounded-3 h-100">
+      <div class="card-header bg-transparent border-0 py-3">
+        <h5 class="fw-bold mb-0">Alertes cette semaine</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-around text-center py-3">
+          <div>
+            <div class="fs-1 fw-bold text-danger">{{ stats.alertes_eleve }}</div>
+            <div class="text-muted small">Élevé / Critique</div>
+          </div>
+          <div>
+            <div class="fs-1 fw-bold text-warning">{{ stats.alertes_modere }}</div>
+            <div class="text-muted small">Modéré</div>
+          </div>
+          <div>
+            <div class="fs-1 fw-bold">{{ stats.alertes_semaine }}</div>
+            <div class="text-muted small">Total</div>
+          </div>
+        </div>
+        {% if stats.alertes_semaine > 0 %}
+        <div class="progress" style="height:24px;">
+          {% set high_pct = (stats.alertes_eleve / stats.alertes_semaine * 100) | round %}
+          <div class="progress-bar bg-danger" style="width:{{ high_pct }}%">{{ stats.alertes_eleve }}</div>
+          <div class="progress-bar bg-warning" style="width:{{ 100 - high_pct }}%">{{ stats.alertes_modere }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0 rounded-3 h-100">
+      <div class="card-header bg-transparent border-0 py-3">
+        <h5 class="fw-bold mb-0">Évolution des alertes (30 jours)</h5>
+      </div>
+      <div class="card-body">
+        {% if stats.alerte_jours %}
+        <canvas id="alertChart" height="200"></canvas>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <p class="mb-0">Aucune donnée d'alerte disponible pour les 30 derniers jours.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{% if stats.alerte_jours %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('alertChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: {{ stats.alerte_jours | map(attribute='date') | list | tojson }},
+    datasets: [{
+      label: 'Alertes',
+      data: {{ stats.alerte_jours | map(attribute='count') | list | tojson }},
+      borderColor: '#E91E63',
+      backgroundColor: 'rgba(233,30,99,0.1)',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } },
+      y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

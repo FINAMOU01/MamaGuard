@@ -1,0 +1,56 @@
+{% extends "admin/layout.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="fw-bold mb-0">Médecins actifs</h4>
+  <span class="badge bg-success rounded-pill fs-6">{{ doctors|length }}</span>
+</div>
+
+{% if doctors %}
+<div class="card shadow-sm border-0 rounded-3">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Nom</th>
+            <th>Spécialité</th>
+            <th>Hôpital</th>
+            <th>Téléphone</th>
+            <th>Code de liaison</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in doctors %}
+          <tr>
+            <td>
+              <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none">{{ d.name }}</a>
+            </td>
+            <td>{{ d.specialty }}</td>
+            <td>{{ d.hospital or '-' }}</td>
+            <td><code>{{ d.phone }}</code></td>
+            <td><span class="badge bg-light text-dark fs-6 px-3 py-2">{{ d.liaison_code }}</span></td>
+            <td class="text-end">
+              <form method="POST" action="{{ url_for('admin.deactivate_doctor', doctor_id=d.id) }}" style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="return confirm('Désactiver {{ d.name }} ? Un SMS sera envoyé.')">
+                  Désactiver
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="text-center py-5">
+  <div class="fs-1 mb-3">📭</div>
+  <h5 class="fw-bold">Aucun médecin actif</h5>
+  <p class="text-muted">Aucun médecin n'a encore été validé.</p>
+</div>
+{% endif %}
+
+{% endblock %}

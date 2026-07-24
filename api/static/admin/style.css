@@ -1,0 +1,77 @@
+:root {
+  --pink: #E91E63;
+  --pink-light: #F06292;
+  --pink-soft: #FCE4EC;
+  --sidebar-width: 240px;
+}
+
+body {
+  background: #f5f6fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar-width);
+  background: linear-gradient(180deg, #E91E63 0%, #D81B60 100%);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sidebar .nav-link {
+  border-radius: 10px;
+  margin-bottom: 2px;
+  font-size: 14px;
+  padding: 10px 14px;
+}
+.sidebar .nav-link:hover { background: rgba(255,255,255,0.15); }
+.sidebar .nav-link.active { background: rgba(255,255,255,0.25); font-weight: 600; }
+
+/* Stat cards */
+.stat-card {
+  border-left: 4px solid #ccc;
+  border-radius: 12px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  cursor: default;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.stat-card.pending { border-left-color: #f39c12; }
+.stat-card.validated { border-left-color: #27ae60; }
+.stat-card.rejected { border-left-color: #e74c3c; }
+.stat-card.inactive { border-left-color: #95a5a6; }
+.stat-card.patients { border-left-color: #3498db; }
+
+/* Pink button */
+.btn-pink {
+  background: linear-gradient(135deg, #E91E63, #F06292);
+  color: #fff;
+  border: none;
+}
+.btn-pink:hover {
+  background: linear-gradient(135deg, #D81B60, #E91E63);
+  color: #fff;
+}
+
+/* Tables */
+.table > tbody > tr > td { vertical-align: middle; }
+.table > tbody > tr:last-child > td { border-bottom: none; }
+
+/* Cards */
+.card { box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+
+/* Code blocks */
+code {
+  background: #f5f5f5;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.85em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 100%; height: auto; position: relative; }
+  .d-flex.flex-row { flex-direction: column !important; }
+}
