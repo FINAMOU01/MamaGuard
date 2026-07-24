@@ -1,7 +1,7 @@
 import hashlib
 import random
 from datetime import datetime, timezone, timedelta
-from flask import Blueprint, request, session, redirect, url_for, render_template, flash
+from flask import Blueprint, request, session, redirect, url_for, render_template, flash, current_app
 from firebase_admin import firestore
 from services.firebase_service import get_db
 from services.sms_service import SmsService
@@ -82,12 +82,16 @@ def dashboard():
     stats = {"pending": 0, "valide": 0, "rejete": 0, "desactive": 0, "patients": 0, "admins": 0}
 
     if db:
-        stats["pending"] = len(list(db.collection("doctors").where("status", "==", "en_attente").limit(1000).stream()))
-        stats["valide"] = len(list(db.collection("doctors").where("status", "==", "valide").limit(1000).stream()))
-        stats["rejete"] = len(list(db.collection("doctors").where("status", "==", "rejete").limit(1000).stream()))
-        stats["desactive"] = len(list(db.collection("doctors").where("status", "==", "desactive").limit(1000).stream()))
-        stats["patients"] = len(list(db.collection("users").limit(1000).stream()))
-        stats["admins"] = len(list(db.collection("admins").limit(1000).stream()))
+        try:
+            stats["pending"] = len(list(db.collection("doctors").where("status", "==", "en_attente").limit(1000).stream()))
+            stats["valide"] = len(list(db.collection("doctors").where("status", "==", "valide").limit(1000).stream()))
+            stats["rejete"] = len(list(db.collection("doctors").where("status", "==", "rejete").limit(1000).stream()))
+            stats["desactive"] = len(list(db.collection("doctors").where("status", "==", "desactive").limit(1000).stream()))
+            stats["patients"] = len(list(db.collection("users").limit(1000).stream()))
+            stats["admins"] = len(list(db.collection("admins").limit(1000).stream()))
+        except Exception as e:
+            current_app.logger.error(f"Dashboard stats error: {e}")
+            flash(f"Erreur lors du chargement des statistiques: {e}", "error")
 
     return render_template("admin/dashboard.html", stats=stats)
 
@@ -102,8 +106,12 @@ def pending_doctors():
     db = get_db()
     doctors = []
     if db:
-        docs = db.collection("doctors").where("status", "==", "en_attente").order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-        doctors = [_doctor_to_dict(d) for d in docs]
+        try:
+            docs = db.collection("doctors").where("status", "==", "en_attente").stream()
+            doctors = [_doctor_to_dict(d) for d in docs]
+        except Exception as e:
+            current_app.logger.error(f"Pending doctors error: {e}")
+            flash(f"Erreur Firebase: {e}", "error")
 
     return render_template("admin/pending_doctors.html", doctors=doctors)
 
@@ -291,8 +299,12 @@ def validated_doctors():
     db = get_db()
     doctors = []
     if db:
-        docs = db.collection("doctors").where("status", "==", "valide").order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-        doctors = [_doctor_to_dict(d) for d in docs]
+        try:
+            docs = db.collection("doctors").where("status", "==", "valide").stream()
+            doctors = [_doctor_to_dict(d) for d in docs]
+        except Exception as e:
+            current_app.logger.error(f"Validated doctors error: {e}")
+            flash(f"Erreur Firebase: {e}", "error")
 
     return render_template("admin/validated_doctors.html", doctors=doctors)
 
@@ -307,9 +319,13 @@ def inactive_doctors():
     db = get_db()
     doctors = []
     if db:
-        for status in ("desactive", "rejete"):
-            docs = db.collection("doctors").where("status", "==", status).order_by("created_at", direction=firestore.Query.DESCENDING).stream()
-            doctors.extend([_doctor_to_dict(d) for d in docs])
+        try:
+            for status in ("desactive", "rejete"):
+                docs = db.collection("doctors").where("status", "==", status).stream()
+                doctors.extend([_doctor_to_dict(d) for d in docs])
+        except Exception as e:
+            current_app.logger.error(f"Inactive doctors error: {e}")
+            flash(f"Erreur Firebase: {e}", "error")
 
     return render_template("admin/inactive_doctors.html", doctors=doctors)
 
