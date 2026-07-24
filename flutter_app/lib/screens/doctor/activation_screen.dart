@@ -184,8 +184,7 @@ class _DoctorActivationScreenState extends State<DoctorActivationScreen> {
           ),
           const SizedBox(height: 28),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: List.generate(6, (i) => _buildCodeBox(i)),
+            children: List.generate(6, (i) => Expanded(child: _buildCodeBox(i))),
           ),
           const SizedBox(height: 28),
           Container(
@@ -231,35 +230,37 @@ class _DoctorActivationScreenState extends State<DoctorActivationScreen> {
   }
 
   Widget _buildCodeBox(int index) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 150),
-      width: 52,
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _focusNodes[index].hasFocus ? AppConstants.primaryColor : Colors.grey[200]!,
-          width: _focusNodes[index].hasFocus ? 2.0 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        height: 56,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _focusNodes[index].hasFocus ? AppConstants.primaryColor : Colors.grey[200]!,
+            width: _focusNodes[index].hasFocus ? 2.0 : 1.0,
           ),
-        ],
-      ),
-      child: Center(
-        child: TextField(
-          controller: _controllers[index],
-          focusNode: _focusNodes[index],
-          textAlign: TextAlign.center,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)],
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D)),
-          decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true),
-          onChanged: (v) => _onDigitChanged(index, v),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Center(
+          child: TextField(
+            controller: _controllers[index],
+            focusNode: _focusNodes[index],
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)],
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D)),
+            decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true),
+            onChanged: (v) => _onDigitChanged(index, v),
+          ),
         ),
       ),
     );
