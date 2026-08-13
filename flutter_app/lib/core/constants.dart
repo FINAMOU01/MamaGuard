@@ -6,7 +6,7 @@ class AppConstants {
   static const String appName = 'MamaGuard';
 
   // API
-  static const String apiBaseUrl = 'http://10.11.12.160:5000';
+  static const String apiBaseUrl = 'https://mamaguard-jpeb.onrender.com';
   static const String predictEndpoint = '/predict';
 
   // Colors

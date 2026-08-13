@@ -69,6 +69,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
     ];
 
     final cfg = chartConfigs[_selectedChart];
+    final spots = _spots(cfg.$2);
+
+    // Bornes dynamiques : couvrent toujours toutes les valeurs avec une marge
+    final dataMin = spots.isEmpty ? cfg.$4 : spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+    final dataMax = spots.isEmpty ? cfg.$3 : spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final margin = (dataMax - dataMin) * 0.15 + 1;
+    final minY = dataMin - margin < cfg.$4 ? dataMin - margin : cfg.$4;
+    final maxY = dataMax + margin > cfg.$3 ? dataMax + margin : cfg.$3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,7 +87,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             LineChartData(
               gridData: FlGridData(
                 show: true,
-                horizontalInterval: (cfg.$3 - cfg.$4) / 4,
+                horizontalInterval: (maxY - minY) / 4,
                 getDrawingHorizontalLine: (v) => FlLine(
                   color: Colors.grey[100]!,
                   strokeWidth: 1,
@@ -113,8 +121,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: false),
-              minY: cfg.$4,
-              maxY: cfg.$3,
+              minY: minY,
+              maxY: maxY,
               lineTouchData: LineTouchData(
                 touchTooltipData: LineTouchTooltipData(
                   getTooltipItems: (spots) => spots.map((s) => LineTooltipItem(
@@ -125,7 +133,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               lineBarsData: [
                 LineChartBarData(
-                  spots: _spots(cfg.$2),
+                  spots: spots,
                   isCurved: true,
                   preventCurveOverShooting: true,
                   color: colors[_selectedChart][0],
