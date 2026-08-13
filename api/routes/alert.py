@@ -1,5 +1,6 @@
 from datetime import datetime
 from flask import Blueprint, request, jsonify
+from google.cloud import firestore
 from google.cloud.firestore import SERVER_TIMESTAMP
 from services.escalation import EscalationService
 from services.predictor import PredictorService
@@ -108,6 +109,7 @@ def alert():
                 "vu": False,
                 "escalated": True,
                 "status": "escalade_en_cours",
+                "createdAt": SERVER_TIMESTAMP,
                 "t0Sent": False,
                 "t10Sent": False,
                 "t20Sent": False,
@@ -150,6 +152,49 @@ def alert():
             "succes": False,
             "erreur": str(e)
         }), 400
+
+
+@alert_bp.route("/patient/alerts", methods=["POST"])
+def get_patient_alerts():
+    try:
+        data = request.get_json()
+        phone = data.get("phone")
+        if not phone:
+            return jsonify({"succes": False, "erreur": "phone requis"}), 400
+
+        db = get_db()
+        if not db:
+            return jsonify({"succes": False, "erreur": "Firestore non configuré"}), 500
+
+        docs = (
+            db.collection("alertes")
+            .where("phone", "==", phone)
+            .order_by("createdAt", direction=firestore.Query.DESCENDING)
+            .limit(50)
+            .get()
+        )
+
+        alerts = []
+        for doc in docs:
+            a = doc.to_dict()
+            created = a.get("createdAt")
+            vu_ts = a.get("vuAt")
+            alerts.append({
+                "id": doc.id,
+                "score": a.get("score", ""),
+                "alertes": a.get("alertes", []),
+                "vu": a.get("vu", False),
+                "status": a.get("status", ""),
+                "createdAt": created.isoformat() if hasattr(created, "isoformat") else str(created) if created else "",
+                "vuAt": vu_ts.isoformat() if hasattr(vu_ts, "isoformat") else str(vu_ts) if vu_ts else "",
+            })
+
+        return jsonify({"succes": True, "alerts": alerts}), 200
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Patient alerts error: {e}")
+        return jsonify({"succes": False, "erreur": str(e)}), 500
 
 
 @alert_bp.route("/alert/<alert_id>/vu", methods=["POST"])

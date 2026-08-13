@@ -504,6 +504,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _ActionCardData(Icons.medical_services_rounded, '👨‍⚕️', 'Mon médecin', 'Voir les informations de votre médecin traitant.', () {
         Navigator.pushNamed(context, AppRoutes.patientLinkDoctor, arguments: {'phone': widget.phone});
       }),
+      _ActionCardData(Icons.health_and_safety_rounded, '🚨', 'Mes alertes sanitaires', 'Historique de vos alertes et leur suivi.', () {
+        Navigator.pushNamed(context, AppRoutes.patientAlertHistory, arguments: {'phone': widget.phone});
+      }),
     ];
 
     return Column(

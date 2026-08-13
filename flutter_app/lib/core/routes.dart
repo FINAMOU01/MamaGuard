@@ -17,6 +17,7 @@ import '../screens/patient/consultation_screen.dart';
 import '../screens/patient/reminder_screen.dart';
 import '../screens/patient/link_doctor_screen.dart';
 import '../screens/patient/notification_screen.dart';
+import '../screens/patient/alert_history_screen.dart';
 import '../screens/doctor/dashboard_screen.dart';
 import '../screens/doctor/registration_screen.dart';
 import '../screens/doctor/pending_screen.dart';
@@ -50,6 +51,7 @@ class AppRoutes {
   static const String patientContacts = '/patient/contacts';
   static const String patientAppointment = '/patient/appointment';
   static const String patientNotifications = '/patient/notifications';
+  static const String patientAlertHistory = '/patient/alert-history';
   static const String doctorRegistration = '/doctor/registration';
   static const String doctorLogin = '/doctor/login';
   static const String doctorPending = '/doctor/pending';
@@ -159,6 +161,11 @@ class AppRoutes {
         final args = settings.arguments as Map?;
         return MaterialPageRoute(
           builder: (_) => NotificationScreen(phone: args?['phone'] as String? ?? ''),
+        );
+      case patientAlertHistory:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => PatientAlertHistoryScreen(phone: args?['phone'] as String? ?? ''),
         );
       case doctorRegistration:
         return MaterialPageRoute(
