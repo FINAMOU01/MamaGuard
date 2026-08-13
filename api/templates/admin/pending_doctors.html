@@ -2,8 +2,13 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h4 class="fw-bold mb-0">Médecins en attente de validation</h4>
-  <span class="badge bg-warning text-dark rounded-pill fs-6">{{ doctors|length }}</span>
+  <div>
+    <h4 class="fw-bold mb-1">Médecins en attente de validation</h4>
+    <p class="text-muted mb-0 small">Examinez et validez les nouvelles inscriptions</p>
+  </div>
+  <span class="badge bg-warning text-dark rounded-pill fs-6 px-3 py-2">
+    <i class="bi bi-hourglass-split me-1"></i>{{ doctors|length }}
+  </span>
 </div>
 
 {% if doctors %}
@@ -13,11 +18,11 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>Nom</th>
-            <th>Spécialité</th>
-            <th>Hôpital</th>
-            <th>Téléphone</th>
-            <th>Inscription</th>
+            <th><i class="bi bi-person me-1"></i>Nom</th>
+            <th><i class="bi bi-award me-1"></i>Spécialité</th>
+            <th><i class="bi bi-building me-1"></i>Hôpital</th>
+            <th><i class="bi bi-telephone me-1"></i>Téléphone</th>
+            <th><i class="bi bi-calendar me-1"></i>Inscription</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -25,21 +30,26 @@
           {% for d in doctors %}
           <tr>
             <td>
-              <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none">{{ d.name }}</a>
+              <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none d-flex align-items-center">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:32px;height:32px;background:linear-gradient(135deg,#FCE4EC,#F8BBD9);">
+                  <i class="bi bi-person-fill" style="color:#E91E63;"></i>
+                </span>
+                {{ d.name }}
+              </a>
             </td>
-            <td>{{ d.specialty }}</td>
+            <td><span class="badge bg-light text-dark">{{ d.specialty }}</span></td>
             <td>{{ d.hospital or '-' }}</td>
             <td><code>{{ d.phone }}</code></td>
             <td class="small text-muted">{{ d.created_at[:10] if d.created_at else '-' }}</td>
             <td class="text-end">
               <form method="POST" action="{{ url_for('admin.validate_doctor', doctor_id=d.id) }}" style="display:inline;">
                 <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Valider {{ d.name }} ? Un code de 6 chiffres sera généré et envoyé par SMS.')">
-                  Valider
+                  <i class="bi bi-check-lg me-1"></i>Valider
                 </button>
               </form>
               <form method="POST" action="{{ url_for('admin.reject_doctor', doctor_id=d.id) }}" style="display:inline;">
                 <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="return confirm('Rejeter {{ d.name }} ? Un SMS de refus sera envoyé.')">
-                  Rejeter
+                  <i class="bi bi-x-lg me-1"></i>Rejeter
                 </button>
               </form>
             </td>
@@ -51,10 +61,14 @@
   </div>
 </div>
 {% else %}
-<div class="text-center py-5">
-  <div class="fs-1 mb-3">🎉</div>
-  <h5 class="fw-bold">Aucun médecin en attente</h5>
-  <p class="text-muted">Toutes les demandes d'inscription ont été traitées.</p>
+<div class="card shadow-sm border-0 rounded-3">
+  <div class="card-body text-center py-5">
+    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:80px;height:80px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);">
+      <i class="bi bi-check-circle-fill fs-2 text-success"></i>
+    </div>
+    <h5 class="fw-bold">Aucun médecin en attente</h5>
+    <p class="text-muted mb-0">Toutes les demandes d'inscription ont été traitées.</p>
+  </div>
 </div>
 {% endif %}
 

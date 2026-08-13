@@ -1,6 +1,11 @@
+import logging
+import os
+
 import firebase_admin
 from firebase_admin import credentials, firestore, messaging
 from config import Config
+
+logger = logging.getLogger(__name__)
 
 _firebase_initialized = False
 
@@ -12,6 +17,7 @@ def ensure_initialized():
 
     creds = Config.get_firebase_credentials()
     if not creds:
+        logger.error("Firebase credentials not found (FIREBASE_SERVICE_ACCOUNT_PATH=%s)", os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH"))
         return False
 
     try:
@@ -21,7 +27,8 @@ def ensure_initialized():
         })
         _firebase_initialized = True
         return True
-    except Exception:
+    except Exception as e:
+        logger.error("Firebase init failed: %s", e, exc_info=True)
         return False
 
 

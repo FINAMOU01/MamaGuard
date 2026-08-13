@@ -25,6 +25,9 @@ app.register_blueprint(remind_bp)
 app.register_blueprint(doctor_bp)
 app.register_blueprint(admin_bp)
 
+from routes.pregnancy import pregnancy_bp
+app.register_blueprint(pregnancy_bp)
+
 atexit.register(lambda: scheduler.shutdown(wait=False))
 
 if __name__ == '__main__':

@@ -1,16 +1,22 @@
 {% extends "admin/layout.html" %}
 {% block content %}
 
-<h4 class="fw-bold mb-4">Rechercher un médecin</h4>
+<div class="mb-4">
+  <h4 class="fw-bold mb-1">Rechercher un médecin</h4>
+  <p class="text-muted mb-0 small">Trouvez rapidement un médecin par nom, hôpital ou téléphone</p>
+</div>
 
 <div class="card shadow-sm border-0 rounded-3 mb-4">
-  <div class="card-body">
-    <form method="POST" class="row g-2">
-      <div class="col-md-10">
-        <input type="text" name="query" class="form-control form-control-lg rounded-3" placeholder="Nom, hôpital ou téléphone..." value="{{ query }}" required autofocus>
+  <div class="card-body p-4">
+    <form method="POST" class="row g-3 align-items-end">
+      <div class="col-md-9 col-lg-10">
+        <label class="form-label"><i class="bi bi-search me-1"></i>Recherche</label>
+        <input type="text" name="query" class="form-control form-control-lg" placeholder="Entrez le nom, l'hôpital ou le numéro de téléphone..." value="{{ query }}" required autofocus>
       </div>
-      <div class="col-md-2">
-        <button type="submit" class="btn btn-pink w-100 btn-lg rounded-3">Rechercher</button>
+      <div class="col-md-3 col-lg-2">
+        <button type="submit" class="btn btn-pink w-100 btn-lg rounded-pill">
+          <i class="bi bi-search me-1"></i>Rechercher
+        </button>
       </div>
     </form>
   </div>
@@ -19,38 +25,46 @@
 {% if request.method == 'POST' %}
   {% if results %}
   <div class="card shadow-sm border-0 rounded-3">
-    <div class="card-header bg-transparent border-0 py-3">
-      <h5 class="fw-bold mb-0">{{ results|length }} résultat(s) pour "{{ query }}"</h5>
+    <div class="card-header bg-transparent border-0 py-3 d-flex align-items-center justify-content-between">
+      <h5 class="fw-bold mb-0"><i class="bi bi-list-ul me-2"></i>Résultats</h5>
+      <span class="badge bg-light text-dark rounded-pill px-3 py-2">{{ results|length }} trouvé(s) pour "{{ query }}"</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>Nom</th>
-              <th>Spécialité</th>
-              <th>Hôpital</th>
-              <th>Téléphone</th>
-              <th>Statut</th>
-              <th>Code</th>
+              <th><i class="bi bi-person me-1"></i>Nom</th>
+              <th><i class="bi bi-award me-1"></i>Spécialité</th>
+              <th><i class="bi bi-building me-1"></i>Hôpital</th>
+              <th><i class="bi bi-telephone me-1"></i>Téléphone</th>
+              <th><i class="bi bi-flag me-1"></i>Statut</th>
+              <th><i class="bi bi-key me-1"></i>Code</th>
             </tr>
           </thead>
           <tbody>
             {% for d in results %}
             <tr>
-              <td><a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none">{{ d.name }}</a></td>
-              <td>{{ d.specialty }}</td>
+              <td>
+                <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none d-flex align-items-center">
+                  <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:32px;height:32px;background:linear-gradient(135deg,#FCE4EC,#F8BBD9);">
+                    <i class="bi bi-person-fill" style="color:#E91E63;"></i>
+                  </span>
+                  {{ d.name }}
+                </a>
+              </td>
+              <td><span class="badge bg-light text-dark">{{ d.specialty }}</span></td>
               <td>{{ d.hospital or '-' }}</td>
               <td><code>{{ d.phone }}</code></td>
               <td>
                 {% if d.status == 'en_attente' %}
-                  <span class="badge bg-warning text-dark">En attente</span>
+                  <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>En attente</span>
                 {% elif d.status == 'valide' %}
-                  <span class="badge bg-success">Validé</span>
+                  <span class="badge bg-success"><i class="bi bi-patch-check me-1"></i>Validé</span>
                 {% elif d.status == 'desactive' %}
-                  <span class="badge bg-secondary">Désactivé</span>
+                  <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Désactivé</span>
                 {% else %}
-                  <span class="badge bg-danger">Rejeté</span>
+                  <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejeté</span>
                 {% endif %}
               </td>
               <td><code>{{ d.liaison_code or '-' }}</code></td>
@@ -62,10 +76,14 @@
     </div>
   </div>
   {% else %}
-  <div class="text-center py-5">
-    <div class="fs-1 mb-3">🔍</div>
-    <h5 class="fw-bold">Aucun résultat</h5>
-    <p class="text-muted">Aucun médecin trouvé pour "{{ query }}"</p>
+  <div class="card shadow-sm border-0 rounded-3">
+    <div class="card-body text-center py-5">
+      <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:80px;height:80px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);">
+        <i class="bi bi-search fs-2 text-secondary"></i>
+      </div>
+      <h5 class="fw-bold">Aucun résultat</h5>
+      <p class="text-muted mb-0">Aucun médecin trouvé pour "{{ query }}"</p>
+    </div>
   </div>
   {% endif %}
 {% endif %}

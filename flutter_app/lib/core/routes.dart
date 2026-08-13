@@ -84,12 +84,18 @@ class AppRoutes {
       case pin:
         final args = settings.arguments as Map?;
         return MaterialPageRoute(
-          builder: (_) => PinScreen(phone: args?['phone'] as String? ?? ''),
+          builder: (_) => PinScreen(
+            phone: args?['phone'] as String? ?? '',
+            role: args?['role'] as String? ?? 'patient',
+          ),
         );
       case pinLogin:
         final args = settings.arguments as Map?;
         return MaterialPageRoute(
-          builder: (_) => PinLoginScreen(phone: args?['phone'] as String? ?? ''),
+          builder: (_) => PinLoginScreen(
+            phone: args?['phone'] as String? ?? '',
+            role: args?['role'] as String? ?? 'patient',
+          ),
         );
       case patientHome:
         final args = settings.arguments as Map?;

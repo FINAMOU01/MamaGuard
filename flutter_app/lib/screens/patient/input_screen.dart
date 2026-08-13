@@ -63,31 +63,34 @@ class _InputScreenState extends State<InputScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/predict'),
+        Uri.parse('${AppConstants.apiBaseUrl}/patient/manual-measure/save'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'bpm': 0,
-          'temperature': 0,
-          'spo2': 0,
-          'tension_systolique': int.parse(_tensionSController.text),
-          'tension_diastolique': int.parse(_tensionDController.text),
-          'contractions_par_10min': int.parse(_contractionsController.text),
-          'semaine_grossesse': _pregnancyWeek,
+          'phone': widget.phone,
+          'tension_s': int.parse(_tensionSController.text),
+          'tension_d': int.parse(_tensionDController.text),
+          'contractions': int.parse(_contractionsController.text),
+          'semaine': _pregnancyWeek,
         }),
       );
 
       setState(() => _isSaving = false);
 
       if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        _saveMeasure(result);
         if (!mounted) return;
-        Navigator.pushNamed(context, AppRoutes.patientScore, arguments: {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Mesures enregistrées. Utilisez le moniteur temps réel pour l\'analyse complète.'),
+            backgroundColor: AppConstants.normalColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        );
+        Navigator.pushNamed(context, AppRoutes.patientSensor, arguments: {
           'phone': widget.phone,
-          'result': result,
         });
       } else {
-        _showError('Erreur lors de l\'analyse');
+        _showError('Erreur lors de l\'enregistrement');
       }
     } catch (_) {
       setState(() => _isSaving = false);
@@ -103,27 +106,6 @@ class _InputScreenState extends State<InputScreen> {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-    );
-  }
-
-  void _saveMeasure(Map result) {
-    http.post(
-      Uri.parse('${AppConstants.apiBaseUrl}/patient/measure/save'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': widget.phone,
-        'date': result['date'] ?? '',
-        'heure': result['heure'] ?? '',
-        'bpm': 0,
-        'temperature': 0,
-        'spo2': 0,
-        'tension_s': int.parse(_tensionSController.text),
-        'tension_d': int.parse(_tensionDController.text),
-        'contractions': int.parse(_contractionsController.text),
-        'semaine': _pregnancyWeek,
-        'score': result['score'] ?? '',
-        'couleur': result['couleur'] ?? '',
-      }),
     );
   }
 
@@ -320,7 +302,7 @@ class _InputScreenState extends State<InputScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Text(
-                        'Analyser mes mesures',
+                        'Enregistrer mes mesures',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
                       ),
               ),

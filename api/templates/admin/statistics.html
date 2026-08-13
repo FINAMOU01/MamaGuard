@@ -1,40 +1,43 @@
 {% extends "admin/layout.html" %}
 {% block content %}
 
-<h4 class="fw-bold mb-4">Statistiques globales anonymes</h4>
+<div class="mb-4">
+  <h4 class="fw-bold mb-1">Statistiques globales anonymes</h4>
+  <p class="text-muted mb-0 small">Aperçu de l'activité de la plateforme MamaGuard</p>
+</div>
 
 <div class="row g-3 mb-4">
-  <div class="col-md-3">
+  <div class="col-6 col-lg-3">
     <div class="card stat-card patients h-100">
       <div class="card-body text-center">
-        <div class="fs-1">👩</div>
+        <div class="fs-1"><i class="bi bi-person-hearts text-info"></i></div>
         <div class="fs-2 fw-bold">{{ stats.patients_actifs }}</div>
         <div class="text-muted small">Patient(e)s actives</div>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-6 col-lg-3">
     <div class="card stat-card validated h-100">
       <div class="card-body text-center">
-        <div class="fs-1">✅</div>
+        <div class="fs-1"><i class="bi bi-patch-check-fill text-success"></i></div>
         <div class="fs-2 fw-bold">{{ stats.medecins_valides }}</div>
         <div class="text-muted small">Médecins validés</div>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
+  <div class="col-6 col-lg-3">
     <div class="card stat-card pending h-100">
       <div class="card-body text-center">
-        <div class="fs-1">⏳</div>
+        <div class="fs-1"><i class="bi bi-hourglass-split text-warning"></i></div>
         <div class="fs-2 fw-bold">{{ stats.medecins_en_attente }}</div>
         <div class="text-muted small">Médecins en attente</div>
       </div>
     </div>
   </div>
-  <div class="col-md-3">
-    <div class="card stat-card h-100" style="border-left-color:#E91E63;">
+  <div class="col-6 col-lg-3">
+    <div class="card stat-card h-100" style="--stat-color:#E91E63;">
       <div class="card-body text-center">
-        <div class="fs-1">📹</div>
+        <div class="fs-1"><i class="bi bi-camera-video-fill" style="color:#E91E63;"></i></div>
         <div class="fs-2 fw-bold">{{ stats.consultations_semaine }}</div>
         <div class="text-muted small">Téléconsultations (7j)</div>
       </div>
@@ -43,48 +46,72 @@
 </div>
 
 <div class="row g-4">
-  <div class="col-md-6">
+  <div class="col-lg-6">
     <div class="card shadow-sm border-0 rounded-3 h-100">
-      <div class="card-header bg-transparent border-0 py-3">
+      <div class="card-header bg-transparent border-0 py-3 d-flex align-items-center">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:36px;height:36px;background:linear-gradient(135deg,#FEE2E2,#FECACA);">
+          <i class="bi bi-exclamation-triangle-fill text-danger"></i>
+        </span>
         <h5 class="fw-bold mb-0">Alertes cette semaine</h5>
       </div>
       <div class="card-body">
-        <div class="d-flex justify-content-around text-center py-3">
-          <div>
-            <div class="fs-1 fw-bold text-danger">{{ stats.alertes_eleve }}</div>
-            <div class="text-muted small">Élevé / Critique</div>
+        <div class="row text-center py-3">
+          <div class="col-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:60px;height:60px;background:linear-gradient(135deg,#FEE2E2,#FECACA);">
+              <span class="fs-4 fw-bold text-danger">{{ stats.alertes_eleve }}</span>
+            </div>
+            <div class="text-muted small fw-medium">Élevé / Critique</div>
           </div>
-          <div>
-            <div class="fs-1 fw-bold text-warning">{{ stats.alertes_modere }}</div>
-            <div class="text-muted small">Modéré</div>
+          <div class="col-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:60px;height:60px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);">
+              <span class="fs-4 fw-bold text-warning">{{ stats.alertes_modere }}</span>
+            </div>
+            <div class="text-muted small fw-medium">Modéré</div>
           </div>
-          <div>
-            <div class="fs-1 fw-bold">{{ stats.alertes_semaine }}</div>
-            <div class="text-muted small">Total</div>
+          <div class="col-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2" style="width:60px;height:60px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);">
+              <span class="fs-4 fw-bold">{{ stats.alertes_semaine }}</span>
+            </div>
+            <div class="text-muted small fw-medium">Total</div>
           </div>
         </div>
         {% if stats.alertes_semaine > 0 %}
-        <div class="progress" style="height:24px;">
+        <div class="progress rounded-pill" style="height:28px;">
           {% set high_pct = (stats.alertes_eleve / stats.alertes_semaine * 100) | round %}
-          <div class="progress-bar bg-danger" style="width:{{ high_pct }}%">{{ stats.alertes_eleve }}</div>
-          <div class="progress-bar bg-warning" style="width:{{ 100 - high_pct }}%">{{ stats.alertes_modere }}</div>
+          <div class="progress-bar bg-danger rounded-start-pill" style="width:{{ high_pct }}%">
+            <span class="fw-semibold">{{ stats.alertes_eleve }}</span>
+          </div>
+          <div class="progress-bar bg-warning rounded-end-pill" style="width:{{ 100 - high_pct }}%">
+            <span class="fw-semibold text-dark">{{ stats.alertes_modere }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-3">
+          <i class="bi bi-check-circle text-success fs-3"></i>
+          <p class="text-muted small mt-2 mb-0">Aucune alerte cette semaine</p>
         </div>
         {% endif %}
       </div>
     </div>
   </div>
 
-  <div class="col-md-6">
+  <div class="col-lg-6">
     <div class="card shadow-sm border-0 rounded-3 h-100">
-      <div class="card-header bg-transparent border-0 py-3">
+      <div class="card-header bg-transparent border-0 py-3 d-flex align-items-center">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:36px;height:36px;background:linear-gradient(135deg,#FCE4EC,#F8BBD9);">
+          <i class="bi bi-graph-up" style="color:#E91E63;"></i>
+        </span>
         <h5 class="fw-bold mb-0">Évolution des alertes (30 jours)</h5>
       </div>
       <div class="card-body">
         {% if stats.alerte_jours %}
         <canvas id="alertChart" height="200"></canvas>
         {% else %}
-        <div class="text-center py-5 text-muted">
-          <p class="mb-0">Aucune donnée d'alerte disponible pour les 30 derniers jours.</p>
+        <div class="text-center py-5">
+          <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:64px;height:64px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);">
+            <i class="bi bi-bar-chart-line fs-3 text-secondary"></i>
+          </div>
+          <p class="text-muted mb-0">Aucune donnée d'alerte disponible pour les 30 derniers jours.</p>
         </div>
         {% endif %}
       </div>
@@ -99,6 +126,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
 const ctx = document.getElementById('alertChart').getContext('2d');
+const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+gradient.addColorStop(0, 'rgba(233, 30, 99, 0.3)');
+gradient.addColorStop(1, 'rgba(233, 30, 99, 0.02)');
+
 new Chart(ctx, {
   type: 'line',
   data: {
@@ -107,18 +138,56 @@ new Chart(ctx, {
       label: 'Alertes',
       data: {{ stats.alerte_jours | map(attribute='count') | list | tojson }},
       borderColor: '#E91E63',
-      backgroundColor: 'rgba(233,30,99,0.1)',
+      backgroundColor: gradient,
       fill: true,
-      tension: 0.3,
-      pointRadius: 3,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#E91E63',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointHoverRadius: 6,
     }]
   },
   options: {
     responsive: true,
-    plugins: { legend: { display: false } },
+    maintainAspectRatio: false,
+    plugins: { 
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1E293B',
+        titleFont: { weight: '600' },
+        bodyFont: { weight: '500' },
+        padding: 12,
+        cornerRadius: 8,
+        displayColors: false
+      }
+    },
     scales: {
-      x: { ticks: { maxTicksLimit: 10, font: { size: 10 } } },
-      y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } }
+      x: { 
+        ticks: { 
+          maxTicksLimit: 8, 
+          font: { size: 11 },
+          color: '#64748B'
+        },
+        grid: { display: false }
+      },
+      y: { 
+        beginAtZero: true, 
+        ticks: { 
+          stepSize: 1, 
+          precision: 0,
+          font: { size: 11 },
+          color: '#64748B'
+        },
+        grid: {
+          color: '#E2E8F0',
+          drawBorder: false
+        }
+      }
+    },
+    interaction: {
+      intersect: false,
+      mode: 'index'
     }
   }
 });

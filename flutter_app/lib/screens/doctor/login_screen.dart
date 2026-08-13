@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/routes.dart';
 
@@ -14,63 +14,61 @@ class DoctorLoginScreen extends StatefulWidget {
 
 class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   final _phoneController = TextEditingController();
-  final List<TextEditingController> _codeControllers = List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _codeFocusNodes = List.generate(6, (_) => FocusNode());
   bool _isLoading = false;
 
   @override
   void dispose() {
     _phoneController.dispose();
-    for (var c in _codeControllers) { c.dispose(); }
-    for (var f in _codeFocusNodes) { f.dispose(); }
     super.dispose();
   }
 
-  String get _code => _codeControllers.map((c) => c.text).join();
-
-  Future<void> _login() async {
-    final phoneRaw = _phoneController.text.trim();
-    if (phoneRaw.length < 8) {
+  Future<void> _continue() async {
+    final raw = _phoneController.text.trim();
+    if (raw.length < 8) {
       _showError('Numéro de téléphone invalide');
       return;
     }
-    if (_code.length != 6) {
-      _showError('Veuillez entrer les 6 chiffres du code d\'activation');
-      return;
-    }
-
-    final phone = '+237$phoneRaw';
+    final phone = '+237$raw';
     setState(() => _isLoading = true);
 
     try {
       final r = await http.post(
-        Uri.parse('${AppConstants.apiBaseUrl}/doctor/activate'),
+        Uri.parse('${AppConstants.apiBaseUrl}/doctor/pin/check'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'phone': phone, 'code': _code}),
+        body: jsonEncode({'phone': phone}),
       );
       final data = jsonDecode(r.body);
       if (!mounted) return;
 
-      if (r.statusCode == 200 && data['succes'] == true) {
-        Navigator.pushReplacementNamed(context, AppRoutes.doctorDashboard, arguments: {'phone': phone});
+      if (data['succes'] == true && data['exists'] == true) {
+        if (data['is_locked'] == true) {
+          _showError(data['erreur'] ?? 'Compte verrouillé');
+          setState(() => _isLoading = false);
+          return;
+        }
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('doctor_phone', phone);
+        if (!mounted) return;
+        Navigator.pushNamed(context, AppRoutes.pinLogin, arguments: {
+          'phone': phone,
+          'role': 'doctor',
+        });
+      } else if (data['succes'] == true && data['exists'] == false) {
+        if (!mounted) return;
+        Navigator.pushNamed(context, AppRoutes.doctorActivation, arguments: {
+          'phone': phone,
+        });
       } else {
-        _showError(data['erreur'] ?? 'Code d\'activation incorrect');
+        _showError(data['erreur'] ?? 'Erreur');
       }
     } catch (e) {
-      if (!mounted) return;
-      _showError('Erreur de connexion au serveur');
+      _showError('Erreur de connexion');
     }
     setState(() => _isLoading = false);
   }
 
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
-  }
-
-  void _onDigitChanged(int index, String value) {
-    if (value.isNotEmpty && index < 5) {
-      _codeFocusNodes[index + 1].requestFocus();
-    }
   }
 
   @override
@@ -142,7 +140,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Connectez-vous avec votre code d\'activation',
+            'Connectez-vous avec votre code PIN',
             style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.85)),
           ),
         ],
@@ -181,7 +179,12 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
             'Connexion',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D)),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 8),
+          Text(
+            'Entrez votre numéro de téléphone',
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 24),
           Row(
             children: [
               Container(
@@ -222,15 +225,6 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Code d\'activation reçu par SMS',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D)),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: List.generate(6, (i) => Expanded(child: _buildCodeBox(i))),
-          ),
           const SizedBox(height: 28),
           Container(
             width: double.infinity,
@@ -251,7 +245,7 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
               ],
             ),
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _login,
+              onPressed: _isLoading ? null : _continue,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
@@ -262,18 +256,16 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.login_rounded, color: Colors.white, size: 22),
+                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
                         SizedBox(width: 10),
-                        Text('Se connecter', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                        Text('Continuer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
                       ],
                     ),
             ),
           ),
           const SizedBox(height: 20),
           TextButton(
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.doctorRegistration);
-            },
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.doctorRegistration),
             child: RichText(
               text: TextSpan(
                 text: 'Je ne suis pas encore inscrit',
@@ -282,43 +274,6 @@ class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCodeBox(int index) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _codeFocusNodes[index].hasFocus ? AppConstants.primaryColor : Colors.grey[200]!,
-            width: _codeFocusNodes[index].hasFocus ? 2.0 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Center(
-          child: TextField(
-            controller: _codeControllers[index],
-            focusNode: _codeFocusNodes[index],
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(1)],
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D)),
-            decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero, isDense: true),
-            onChanged: (v) => _onDigitChanged(index, v),
-          ),
-        ),
       ),
     );
   }

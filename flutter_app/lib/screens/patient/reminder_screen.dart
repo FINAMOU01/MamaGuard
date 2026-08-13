@@ -141,11 +141,13 @@ class _ReminderScreenState extends State<ReminderScreen> {
 
   Future<void> _scheduleLocalNotif(DateTime dt, String title, String body) async {
     const androidDetails = AndroidNotificationDetails(
-      'mamaguard_reminders',
-      'Rappels MamaGuard',
+      'mamaguard_reminder',
+      'Rappels de consultation',
       channelDescription: 'Notifications de rappel de consultation',
-      importance: Importance.high,
+      importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
       icon: '@mipmap/ic_launcher',
     );
     const iosDetails = DarwinNotificationDetails();

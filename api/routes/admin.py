@@ -38,6 +38,7 @@ def _doctor_to_dict(doc):
         "specialty": d.get("specialty", ""),
         "hospital": d.get("hospital", ""),
         "status": d.get("status", ""),
+        "activation_code": d.get("activation_code", ""),
         "liaison_code": d.get("liaison_code", ""),
         "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts) if ts else "",
     }
@@ -158,22 +159,24 @@ def validate_doctor(doctor_id):
         return redirect(url_for("admin.pending_doctors"))
 
     doctor_data = doc.to_dict()
+    activation_code = _generate_code()
     liaison_code = _generate_code()
     name = doctor_data.get("name", "Médecin")
     phone = doctor_data.get("phone", "")
 
     doc_ref.update({
         "status": "valide",
+        "activation_code": activation_code,
         "liaison_code": liaison_code,
         "validated_at": firestore.SERVER_TIMESTAMP,
         "validated_by": session.get("admin_email", ""),
     })
 
     if phone:
-        msg = f"MamaGuard: {name}, votre inscription a ete validee. Votre code de liaison est {liaison_code}. Partagez-le avec vos patientes."
+        msg = f"MamaGuard: {name}, votre inscription a ete validee. Votre code d'activation est {activation_code}. Votre code de liaison est {liaison_code} a partager a vos patientes."
         sms_service.send(phone, msg)
 
-    flash(f"Médecin {name} validé avec succès. Code: {liaison_code}", "success")
+    flash(f"Médecin {name} validé. Activation: {activation_code}, Liaison: {liaison_code}", "success")
     return redirect(url_for("admin.pending_doctors"))
 
 
@@ -270,19 +273,20 @@ def reactivate_doctor(doctor_id):
     doctor_data = doc.to_dict()
     name = doctor_data.get("name", "Médecin")
     phone = doctor_data.get("phone", "")
+    activation_code = doctor_data.get("activation_code", _generate_code())
     liaison_code = doctor_data.get("liaison_code", _generate_code())
 
+    updates = {"status": "valide"}
+    if not doctor_data.get("activation_code"):
+        updates["activation_code"] = activation_code
     if not doctor_data.get("liaison_code"):
-        doc_ref.update({"liaison_code": liaison_code})
-
-    doc_ref.update({
-        "status": "valide",
-        "reactivated_at": firestore.SERVER_TIMESTAMP,
-        "reactivated_by": session.get("admin_email", ""),
-    })
+        updates["liaison_code"] = liaison_code
+    updates["reactivated_at"] = firestore.SERVER_TIMESTAMP
+    updates["reactivated_by"] = session.get("admin_email", "")
+    doc_ref.update(updates)
 
     if phone:
-        msg = f"MamaGuard: Dr {name}, votre compte medecin a ete reactive. Vous pouvez des a present utiliser votre code de liaison."
+        msg = f"MamaGuard: Dr {name}, votre compte a ete reactive. Votre code d'activation est {activation_code}. Votre code de liaison est {liaison_code}."
         sms_service.send(phone, msg)
 
     flash(f"Compte de {name} réactivé", "success")

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/routes.dart';
 
@@ -40,6 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
             _showError(checkBody['erreur'] ?? 'Compte verrouillé');
             return;
           }
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('patient_phone', phone);
+          if (!mounted) return;
           Navigator.pushNamed(context, AppRoutes.pinLogin, arguments: {
             'phone': phone,
           });

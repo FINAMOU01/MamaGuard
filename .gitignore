@@ -46,6 +46,10 @@ firebase-debug.log
 *.serviceAccountKey.json
 google-services.json
 GoogleService-Info.plist
+credentials/
+
+# Build logs locaux
+flutter_app/build_log*.txt
 
 # Functions
 functions/node_modules/

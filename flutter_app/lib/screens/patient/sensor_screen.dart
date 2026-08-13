@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants.dart';
@@ -26,11 +25,6 @@ class _SensorScreenState extends State<SensorScreen> {
   final _temp = ValueNotifier<double>(0);
   final _fsr = ValueNotifier<double>(0);
 
-  final _bpmTarget = 72.0;
-  final _spo2Target = 98.0;
-  final _tempTarget = 37.0;
-  final _fsrTarget = 20.0;
-
   @override
   void initState() {
     super.initState();
@@ -51,12 +45,53 @@ class _SensorScreenState extends State<SensorScreen> {
     } catch (_) {}
   }
 
+  Future<void> _fetchLiveVitals() async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/patient/vitals/live'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': widget.phone}),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final v = data['vitals'] as Map? ?? {};
+        final bpm = (v['bpm'] as num?)?.toDouble() ?? 0;
+        final spo2 = (v['spo2'] as num?)?.toDouble() ?? 0;
+        final temp = (v['temperature'] as num?)?.toDouble() ?? 0;
+        final ctx = (v['contractions_par_10min'] as num?)?.toDouble() ?? 0;
+        if (bpm > 0) _bpm.value = bpm;
+        if (spo2 > 0) _spo2.value = spo2;
+        if (temp > 0) _temp.value = temp;
+        _fsr.value = ctx;
+      }
+    } catch (_) {}
+  }
+
   Future<void> _analyze() async {
     if (_bpm.value == 0) {
       _showError('Démarrez le moniteur d\'abord');
       return;
     }
     setState(() => _isAnalyzing = true);
+
+    int tensionS = 0;
+    int tensionD = 0;
+    int contractions = _fsr.value.round();
+    try {
+      final manualResp = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/patient/manual-measure'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'phone': widget.phone}),
+      );
+      if (manualResp.statusCode == 200) {
+        final manual = jsonDecode(manualResp.body)['pending_manual'] as Map? ?? {};
+        tensionS = (manual['tension_s'] as num?)?.toInt() ?? 0;
+        tensionD = (manual['tension_d'] as num?)?.toInt() ?? 0;
+        final manualCtx = (manual['contractions'] as num?)?.toInt() ?? 0;
+        if (manualCtx > 0) contractions = manualCtx;
+      }
+    } catch (_) {}
+
     try {
       final response = await http.post(
         Uri.parse('${AppConstants.apiBaseUrl}/predict'),
@@ -65,16 +100,21 @@ class _SensorScreenState extends State<SensorScreen> {
           'bpm': _bpm.value.round(),
           'temperature': double.parse(_temp.value.toStringAsFixed(1)),
           'spo2': _spo2.value.round(),
-          'tension_systolique': 0,
-          'tension_diastolique': 0,
-          'contractions_par_10min': _fsr.value.round(),
+          'tension_systolique': tensionS,
+          'tension_diastolique': tensionD,
+          'contractions_par_10min': contractions,
           'semaine_grossesse': _pregnancyWeek,
         }),
       );
       setState(() => _isAnalyzing = false);
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        _saveMeasure(result);
+        _saveMeasure(result, tensionS, tensionD, contractions);
+        http.post(
+          Uri.parse('${AppConstants.apiBaseUrl}/patient/manual-measure/clear'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': widget.phone}),
+        );
         if (!mounted) return;
         Navigator.pushNamed(context, AppRoutes.patientScore, arguments: {
           'phone': widget.phone,
@@ -100,7 +140,7 @@ class _SensorScreenState extends State<SensorScreen> {
     );
   }
 
-  void _saveMeasure(Map result) {
+  void _saveMeasure(Map result, int tensionS, int tensionD, int contractions) {
     http.post(
       Uri.parse('${AppConstants.apiBaseUrl}/patient/measure/save'),
       headers: {'Content-Type': 'application/json'},
@@ -111,9 +151,9 @@ class _SensorScreenState extends State<SensorScreen> {
         'bpm': _bpm.value.round(),
         'temperature': double.parse(_temp.value.toStringAsFixed(1)),
         'spo2': _spo2.value.round(),
-        'tension_s': 0,
-        'tension_d': 0,
-        'contractions': _fsr.value.round(),
+        'tension_s': tensionS,
+        'tension_d': tensionD,
+        'contractions': contractions,
         'semaine': _pregnancyWeek,
         'score': result['score'] ?? '',
         'couleur': result['couleur'] ?? '',
@@ -137,16 +177,10 @@ class _SensorScreenState extends State<SensorScreen> {
       setState(() => _isMonitoring = false);
     } else {
       setState(() => _isMonitoring = true);
-      _timer = Timer.periodic(const Duration(seconds: 2), (_) => _updateValues());
+      _timer = Timer.periodic(const Duration(seconds: 2), (_) async {
+        await _fetchLiveVitals();
+      });
     }
-  }
-
-  void _updateValues() {
-    final rng = Random();
-    _bpm.value = (_bpmTarget + rng.nextDouble() * 8 - 4).clamp(55, 130);
-    _spo2.value = (_spo2Target + rng.nextDouble() * 3 - 1.5).clamp(88, 100);
-    _temp.value = (_tempTarget + rng.nextDouble() * 0.6 - 0.3).clamp(35.5, 39.0);
-    _fsr.value = (_fsrTarget + rng.nextDouble() * 30 - 15).clamp(0, 100);
   }
 
   Color _getBpmColor(double v) => v >= 60 && v <= 100 ? AppConstants.normalColor

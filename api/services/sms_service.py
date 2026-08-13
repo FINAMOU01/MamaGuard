@@ -9,6 +9,7 @@ class SmsService:
         self.account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
         self.from_number = os.getenv("TWILIO_PHONE_NUMBER")
+        self.enabled = os.getenv("SMS_ENABLED", "true").lower() in ("1", "true", "yes", "on")
         self._client = None
 
     @property
@@ -22,6 +23,12 @@ class SmsService:
         return all([self.account_sid, self.auth_token, self.from_number])
 
     def send(self, to, message, add_timestamp=False):
+        if not self.enabled:
+            return {
+                "succes": False,
+                "erreur": "SMS desactive (SMS_ENABLED=false) - aucun SMS envoye pour proteger le compte Twilio",
+                "to": to,
+            }
         if not self.is_configured:
             return {
                 "succes": False,

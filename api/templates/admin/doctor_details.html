@@ -2,95 +2,106 @@
 {% block content %}
 
 <div class="mb-4">
-  <a href="{{ url_for('admin.pending_doctors') if doctor.status == 'en_attente' else url_for('admin.validated_doctors') }}" class="text-decoration-none text-muted small">
-    &larr; Retour
+  <a href="{{ url_for('admin.pending_doctors') if doctor.status == 'en_attente' else url_for('admin.validated_doctors') }}" class="text-decoration-none d-inline-flex align-items-center text-muted small">
+    <i class="bi bi-arrow-left me-2"></i>Retour à la liste
   </a>
 </div>
 
 <div class="row g-4">
-  <div class="col-md-8">
+  <div class="col-lg-8">
     <div class="card shadow-sm border-0 rounded-3">
-      <div class="card-header bg-transparent border-0 py-3">
+      <div class="card-header bg-transparent border-0 py-3 d-flex align-items-center">
+        <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-3" style="width:48px;height:48px;background:linear-gradient(135deg,#FCE4EC,#F8BBD9);">
+          <i class="bi bi-person-badge fs-4" style="color:#E91E63;"></i>
+        </span>
         <h5 class="fw-bold mb-0">Détails du médecin</h5>
       </div>
       <div class="card-body">
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Nom</label>
-          <div class="fw-semibold fs-5">{{ doctor.name }}</div>
-        </div>
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Spécialité</label>
-          <div>{{ doctor.specialty }}</div>
-        </div>
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Hôpital</label>
-          <div>{{ doctor.hospital or '-' }}</div>
-        </div>
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Téléphone</label>
-          <div><code>{{ doctor.phone }}</code></div>
-        </div>
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Date d'inscription</label>
-          <div>{{ doctor.created_at[:10] if doctor.created_at else '-' }}</div>
-        </div>
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Statut</label>
-          <div>
-            {% if doctor.status == 'en_attente' %}
-              <span class="badge bg-warning text-dark">En attente</span>
-            {% elif doctor.status == 'valide' %}
-              <span class="badge bg-success">Validé</span>
-            {% elif doctor.status == 'desactive' %}
-              <span class="badge bg-secondary">Désactivé</span>
-            {% else %}
-              <span class="badge bg-danger">Rejeté</span>
-            {% endif %}
+        <div class="row g-4">
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Nom complet</label>
+            <div class="fw-semibold fs-5">{{ doctor.name }}</div>
           </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Spécialité</label>
+            <div><span class="badge bg-light text-dark fs-6 px-3 py-2">{{ doctor.specialty }}</span></div>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Hôpital</label>
+            <div>{{ doctor.hospital or '-' }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Téléphone</label>
+            <div><code class="fs-6">{{ doctor.phone }}</code></div>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Date d'inscription</label>
+            <div><i class="bi bi-calendar-event me-1 text-muted"></i>{{ doctor.created_at[:10] if doctor.created_at else '-' }}</div>
+          </div>
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Statut actuel</label>
+            <div>
+              {% if doctor.status == 'en_attente' %}
+                <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split me-1"></i>En attente</span>
+              {% elif doctor.status == 'valide' %}
+                <span class="badge bg-success"><i class="bi bi-patch-check me-1"></i>Validé</span>
+              {% elif doctor.status == 'desactive' %}
+                <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Désactivé</span>
+              {% else %}
+                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejeté</span>
+              {% endif %}
+            </div>
+          </div>
+          {% if doctor.liaison_code %}
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Code de liaison</label>
+            <div><span class="badge bg-light text-dark fs-5 px-4 py-2 font-monospace">{{ doctor.liaison_code }}</span></div>
+          </div>
+          {% endif %}
+          {% if doctor.activation_code %}
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Code d'activation</label>
+            <div><span class="badge bg-light text-dark fs-5 px-4 py-2 font-monospace">{{ doctor.activation_code }}</span></div>
+          </div>
+          {% endif %}
+          {% if doctor.patient_count is defined %}
+          <div class="col-md-6">
+            <label class="text-muted small text-uppercase">Patient(e)s lié(e)s</label>
+            <div class="fw-bold fs-5"><i class="bi bi-people-fill me-1 text-info"></i>{{ doctor.patient_count }}</div>
+          </div>
+          {% endif %}
         </div>
-        {% if doctor.liaison_code %}
-        <div class="mb-3">
-          <label class="text-muted small text-uppercase">Code de liaison</label>
-          <div><span class="badge bg-light text-dark fs-5 px-4 py-2">{{ doctor.liaison_code }}</span></div>
-        </div>
-        {% endif %}
-        {% if doctor.patient_count is defined %}
-        <div class="mb-0">
-          <label class="text-muted small text-uppercase">Patient(e)s lié(e)s</label>
-          <div class="fw-bold">{{ doctor.patient_count }}</div>
-        </div>
-        {% endif %}
       </div>
     </div>
   </div>
 
-  <div class="col-md-4">
+  <div class="col-lg-4">
     <div class="card shadow-sm border-0 rounded-3">
       <div class="card-header bg-transparent border-0 py-3">
-        <h5 class="fw-bold mb-0">Actions</h5>
+        <h5 class="fw-bold mb-0"><i class="bi bi-lightning-charge me-2"></i>Actions rapides</h5>
       </div>
       <div class="card-body">
         {% if doctor.status == 'en_attente' %}
-        <form method="POST" action="{{ url_for('admin.validate_doctor', doctor_id=doctor.id) }}" class="mb-2">
-          <button type="submit" class="btn btn-success w-100 rounded-pill" onclick="return confirm('Valider ce médecin ?')">
-            Valider le médecin
+        <form method="POST" action="{{ url_for('admin.validate_doctor', doctor_id=doctor.id) }}" class="mb-3">
+          <button type="submit" class="btn btn-success w-100 rounded-pill py-2" onclick="return confirm('Valider ce médecin ?')">
+            <i class="bi bi-check-lg me-2"></i>Valider le médecin
           </button>
         </form>
         <form method="POST" action="{{ url_for('admin.reject_doctor', doctor_id=doctor.id) }}">
-          <button type="submit" class="btn btn-outline-danger w-100 rounded-pill" onclick="return confirm('Rejeter ce médecin ?')">
-            Rejeter la demande
+          <button type="submit" class="btn btn-outline-danger w-100 rounded-pill py-2" onclick="return confirm('Rejeter ce médecin ?')">
+            <i class="bi bi-x-lg me-2"></i>Rejeter la demande
           </button>
         </form>
         {% elif doctor.status == 'valide' %}
         <form method="POST" action="{{ url_for('admin.deactivate_doctor', doctor_id=doctor.id) }}">
-          <button type="submit" class="btn btn-outline-secondary w-100 rounded-pill" onclick="return confirm('Désactiver {{ doctor.name }} ? Un SMS sera envoyé.')">
-            Désactiver le compte
+          <button type="submit" class="btn btn-outline-secondary w-100 rounded-pill py-2" onclick="return confirm('Désactiver {{ doctor.name }} ? Un SMS sera envoyé.')">
+            <i class="bi bi-pause-circle me-2"></i>Désactiver le compte
           </button>
         </form>
         {% elif doctor.status == 'desactive' %}
         <form method="POST" action="{{ url_for('admin.reactivate_doctor', doctor_id=doctor.id) }}">
-          <button type="submit" class="btn btn-success w-100 rounded-pill" onclick="return confirm('Réactiver {{ doctor.name }} ?')">
-            Réactiver le compte
+          <button type="submit" class="btn btn-success w-100 rounded-pill py-2" onclick="return confirm('Réactiver {{ doctor.name }} ?')">
+            <i class="bi bi-play-circle me-2"></i>Réactiver le compte
           </button>
         </form>
         {% endif %}

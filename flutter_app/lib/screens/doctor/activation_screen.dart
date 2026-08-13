@@ -47,7 +47,10 @@ class _DoctorActivationScreenState extends State<DoctorActivationScreen> {
       if (!mounted) return;
 
       if (r.statusCode == 200 && data['succes'] == true) {
-        Navigator.pushReplacementNamed(context, AppRoutes.doctorDashboard, arguments: {'phone': widget.phone});
+        Navigator.pushReplacementNamed(context, AppRoutes.pin, arguments: {
+          'phone': widget.phone,
+          'role': 'doctor',
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(data['erreur'] ?? 'Code incorrect'), backgroundColor: Colors.red),

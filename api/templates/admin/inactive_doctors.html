@@ -1,7 +1,15 @@
 {% extends "admin/layout.html" %}
 {% block content %}
 
-<h4 class="fw-bold mb-4">Comptes inactifs</h4>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4 class="fw-bold mb-1">Comptes inactifs</h4>
+    <p class="text-muted mb-0 small">Médecins désactivés ou dont la demande a été rejetée</p>
+  </div>
+  <span class="badge bg-secondary rounded-pill fs-6 px-3 py-2">
+    <i class="bi bi-person-dash me-1"></i>{{ doctors|length }}
+  </span>
+</div>
 
 {% if doctors %}
 <div class="card shadow-sm border-0 rounded-3">
@@ -10,31 +18,38 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>Nom</th>
-            <th>Spécialité</th>
-            <th>Téléphone</th>
-            <th>Statut</th>
+            <th><i class="bi bi-person me-1"></i>Nom</th>
+            <th><i class="bi bi-award me-1"></i>Spécialité</th>
+            <th><i class="bi bi-telephone me-1"></i>Téléphone</th>
+            <th><i class="bi bi-flag me-1"></i>Statut</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for d in doctors %}
           <tr>
-            <td class="fw-semibold">{{ d.name }}</td>
-            <td>{{ d.specialty }}</td>
+            <td>
+              <div class="d-flex align-items-center">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:32px;height:32px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);">
+                  <i class="bi bi-person-slash text-secondary"></i>
+                </span>
+                <span class="fw-semibold">{{ d.name }}</span>
+              </div>
+            </td>
+            <td><span class="badge bg-light text-dark">{{ d.specialty }}</span></td>
             <td><code>{{ d.phone }}</code></td>
             <td>
               {% if d.status == 'desactive' %}
-                <span class="badge bg-secondary">Désactivé</span>
+                <span class="badge bg-secondary"><i class="bi bi-pause-circle me-1"></i>Désactivé</span>
               {% elif d.status == 'rejete' %}
-                <span class="badge bg-danger">Rejeté</span>
+                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Rejeté</span>
               {% endif %}
             </td>
             <td class="text-end">
               {% if d.status == 'desactive' %}
               <form method="POST" action="{{ url_for('admin.reactivate_doctor', doctor_id=d.id) }}" style="display:inline;">
                 <button type="submit" class="btn btn-sm btn-success rounded-pill px-3" onclick="return confirm('Réactiver {{ d.name }} ?')">
-                  Réactiver
+                  <i class="bi bi-play-circle me-1"></i>Réactiver
                 </button>
               </form>
               {% endif %}
@@ -47,10 +62,14 @@
   </div>
 </div>
 {% else %}
-<div class="text-center py-5">
-  <div class="fs-1 mb-3">✅</div>
-  <h5 class="fw-bold">Aucun compte inactif</h5>
-  <p class="text-muted">Tous les comptes sont actifs ou en attente.</p>
+<div class="card shadow-sm border-0 rounded-3">
+  <div class="card-body text-center py-5">
+    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:80px;height:80px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);">
+      <i class="bi bi-check-all fs-2 text-success"></i>
+    </div>
+    <h5 class="fw-bold">Aucun compte inactif</h5>
+    <p class="text-muted mb-0">Tous les comptes sont actifs ou en attente.</p>
+  </div>
 </div>
 {% endif %}
 

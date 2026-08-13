@@ -1,24 +1,71 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/routes.dart';
 
 class PinScreen extends StatefulWidget {
   final String phone;
-  const PinScreen({super.key, required this.phone});
+  final String role;
+  const PinScreen({super.key, required this.phone, this.role = 'patient'});
 
   @override
   State<PinScreen> createState() => _PinScreenState();
 }
 
 class _PinScreenState extends State<PinScreen> {
+  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(4, (_) => TextEditingController());
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _isConfirmStep = false;
   String _firstPin = '';
   String _confirmPin = '';
+
+  @override
+  void initState() {
+    super.initState();
+    for (final fn in _focusNodes) {
+      fn.addListener(() => setState(() {}));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final fn in _focusNodes) {
+      fn.dispose();
+    }
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _resetControllers() {
+    for (final c in _controllers) {
+      c.clear();
+    }
+    _focusNodes[0].requestFocus();
+  }
+
+  void _onDigitChanged(int index, String value) {
+    if (value.length > 1) {
+      _controllers[index].text = value.substring(value.length - 1);
+      _controllers[index].selection = TextSelection.collapsed(offset: 1);
+    }
+    if (value.isNotEmpty && index < 3) {
+      _focusNodes[index + 1].requestFocus();
+    }
+    if (value.isEmpty && index > 0) {
+      _focusNodes[index - 1].requestFocus();
+    }
+    final pin = _controllers.map((c) => c.text).join();
+    if (pin.length == 4) {
+      _focusNodes[3].unfocus();
+      _onPinComplete(pin);
+    }
+  }
 
   Future<void> _onPinComplete(String pin) async {
     if (!_isConfirmStep) {
@@ -26,6 +73,7 @@ class _PinScreenState extends State<PinScreen> {
         _firstPin = pin;
         _isConfirmStep = true;
       });
+      _resetControllers();
     } else {
       _confirmPin = pin;
       if (_firstPin != _confirmPin) {
@@ -40,14 +88,16 @@ class _PinScreenState extends State<PinScreen> {
           _firstPin = '';
           _confirmPin = '';
         });
+        _resetControllers();
         return;
       }
 
       setState(() => _isLoading = true);
 
       try {
+        final endpoint = widget.role == 'doctor' ? '/doctor/pin/create' : '/pin/create';
         final response = await http.post(
-          Uri.parse('${AppConstants.apiBaseUrl}/pin/create'),
+          Uri.parse('${AppConstants.apiBaseUrl}$endpoint'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'phone': widget.phone, 'pin': pin}),
         );
@@ -55,10 +105,13 @@ class _PinScreenState extends State<PinScreen> {
         setState(() => _isLoading = false);
 
         if (response.statusCode == 200) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('${widget.role}_phone', widget.phone);
           if (!mounted) return;
+          final homeRoute = widget.role == 'doctor' ? AppRoutes.doctorDashboard : AppRoutes.patientHome;
           Navigator.pushNamedAndRemoveUntil(
             context,
-            AppRoutes.patientHome,
+            homeRoute,
             (route) => route.isFirst,
             arguments: {'phone': widget.phone},
           );
@@ -93,7 +146,7 @@ class _PinScreenState extends State<PinScreen> {
         foregroundColor: AppConstants.primaryColor,
       ),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Form(
             key: _formKey,
@@ -124,26 +177,60 @@ class _PinScreenState extends State<PinScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                PinCodeTextField(
-                  appContext: context,
-                  length: 4,
+                Row(
                   key: ValueKey(_isConfirmStep),
-                  onChanged: (_) {},
-                  onCompleted: _onPinComplete,
-                  pinTheme: PinTheme(
-                    shape: PinCodeFieldShape.box,
-                    borderRadius: BorderRadius.circular(12),
-                    fieldHeight: 64,
-                    fieldWidth: 56,
-                    activeColor: AppConstants.primaryColor,
-                    inactiveColor: Colors.grey[300]!,
-                    selectedColor: AppConstants.secondaryColor,
-                    activeFillColor: Colors.white,
-                    inactiveFillColor: Colors.grey[50]!,
-                    selectedFillColor: Colors.white,
-                  ),
-                  keyboardType: TextInputType.number,
-                  enableActiveFill: true,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(4, (i) {
+                    final isFocused = _focusNodes[i].hasFocus;
+                    final hasText = _controllers[i].text.isNotEmpty;
+                    return Padding(
+                      padding: EdgeInsets.symmetric(horizontal: i < 3 ? 8.0 : 0),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeInOut,
+                        clipBehavior: Clip.antiAlias,
+                        width: 60,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isFocused ? AppConstants.softPink : Colors.grey[300]!,
+                            width: isFocused ? 2 : 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isFocused
+                                  ? AppConstants.softPink.withValues(alpha: 0.15)
+                                  : Colors.black.withValues(alpha: 0.04),
+                              blurRadius: isFocused ? 12 : 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _controllers[i],
+                          focusNode: _focusNodes[i],
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          maxLength: 1,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF2D2D2D),
+                          ),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.only(bottom: 4),
+                            hintText: hasText ? '' : '•',
+                            hintStyle: TextStyle(fontSize: 24, color: Colors.grey[300]),
+                          ),
+                          onChanged: (v) => _onDigitChanged(i, v),
+                        ),
+                      ),
+                    );
+                  }),
                 ),
                 const SizedBox(height: 32),
                 if (_isLoading)

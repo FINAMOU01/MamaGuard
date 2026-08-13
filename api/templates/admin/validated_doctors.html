@@ -2,8 +2,13 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h4 class="fw-bold mb-0">Médecins actifs</h4>
-  <span class="badge bg-success rounded-pill fs-6">{{ doctors|length }}</span>
+  <div>
+    <h4 class="fw-bold mb-1">Médecins actifs</h4>
+    <p class="text-muted mb-0 small">Liste des médecins validés et opérationnels</p>
+  </div>
+  <span class="badge bg-success rounded-pill fs-6 px-3 py-2">
+    <i class="bi bi-person-check me-1"></i>{{ doctors|length }}
+  </span>
 </div>
 
 {% if doctors %}
@@ -13,11 +18,11 @@
       <table class="table table-hover mb-0">
         <thead class="table-light">
           <tr>
-            <th>Nom</th>
-            <th>Spécialité</th>
-            <th>Hôpital</th>
-            <th>Téléphone</th>
-            <th>Code de liaison</th>
+            <th><i class="bi bi-person me-1"></i>Nom</th>
+            <th><i class="bi bi-award me-1"></i>Spécialité</th>
+            <th><i class="bi bi-building me-1"></i>Hôpital</th>
+            <th><i class="bi bi-telephone me-1"></i>Téléphone</th>
+            <th><i class="bi bi-key me-1"></i>Code de liaison</th>
             <th class="text-end">Actions</th>
           </tr>
         </thead>
@@ -25,16 +30,21 @@
           {% for d in doctors %}
           <tr>
             <td>
-              <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none">{{ d.name }}</a>
+              <a href="{{ url_for('admin.doctor_details', doctor_id=d.id) }}" class="fw-semibold text-decoration-none d-flex align-items-center">
+                <span class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" style="width:32px;height:32px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);">
+                  <i class="bi bi-person-check-fill text-success"></i>
+                </span>
+                {{ d.name }}
+              </a>
             </td>
-            <td>{{ d.specialty }}</td>
+            <td><span class="badge bg-light text-dark">{{ d.specialty }}</span></td>
             <td>{{ d.hospital or '-' }}</td>
             <td><code>{{ d.phone }}</code></td>
-            <td><span class="badge bg-light text-dark fs-6 px-3 py-2">{{ d.liaison_code }}</span></td>
+            <td><span class="badge bg-light text-dark fs-6 px-3 py-2 font-monospace">{{ d.liaison_code }}</span></td>
             <td class="text-end">
               <form method="POST" action="{{ url_for('admin.deactivate_doctor', doctor_id=d.id) }}" style="display:inline;">
                 <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="return confirm('Désactiver {{ d.name }} ? Un SMS sera envoyé.')">
-                  Désactiver
+                  <i class="bi bi-pause-circle me-1"></i>Désactiver
                 </button>
               </form>
             </td>
@@ -46,10 +56,14 @@
   </div>
 </div>
 {% else %}
-<div class="text-center py-5">
-  <div class="fs-1 mb-3">📭</div>
-  <h5 class="fw-bold">Aucun médecin actif</h5>
-  <p class="text-muted">Aucun médecin n'a encore été validé.</p>
+<div class="card shadow-sm border-0 rounded-3">
+  <div class="card-body text-center py-5">
+    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width:80px;height:80px;background:linear-gradient(135deg,#E5E7EB,#D1D5DB);">
+      <i class="bi bi-inbox fs-2 text-secondary"></i>
+    </div>
+    <h5 class="fw-bold">Aucun médecin actif</h5>
+    <p class="text-muted mb-0">Aucun médecin n'a encore été validé.</p>
+  </div>
 </div>
 {% endif %}
 

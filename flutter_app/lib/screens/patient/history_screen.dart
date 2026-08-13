@@ -57,6 +57,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       [AppConstants.warningColor, AppConstants.criticalColor],
       [Colors.blue, Colors.lightBlue],
       [Colors.purple, Colors.deepPurple],
+      [Colors.orange, Colors.deepOrange],
     ];
 
     final chartConfigs = [
@@ -64,6 +65,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ('SpO₂', 'spo2', 100.0, 85.0),
       ('Tension sys.', 'tension_s', 160.0, 80.0),
       ('Tension dia.', 'tension_d', 100.0, 50.0),
+      ('Température', 'temperature', 40.0, 35.0),
     ];
 
     final cfg = chartConfigs[_selectedChart];
@@ -220,8 +222,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildContent() {
-    final chartLabels = ['BPM', 'SpO₂', 'Tension sys.', 'Tension dia.'];
-    final chartIcons = [Icons.favorite_rounded, Icons.air_rounded, Icons.arrow_upward_rounded, Icons.arrow_downward_rounded];
+    final chartLabels = ['BPM', 'SpO₂', 'Tension sys.', 'Tension dia.', 'Température'];
+    final chartIcons = [Icons.favorite_rounded, Icons.air_rounded, Icons.arrow_upward_rounded, Icons.arrow_downward_rounded, Icons.thermostat_rounded];
 
     return Column(
       children: [
@@ -296,8 +298,109 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
         ],
+        if (_mesures.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 6)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.analytics_rounded, size: 18, color: Color(0xFFE91E63)),
+                    SizedBox(width: 8),
+                    Text('Résultats d\'analyse', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ..._mesures.take(15).map((m) => _buildAnalysisRow(m)),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _buildAnalysisRow(Map m) {
+    Color dotColor;
+    String label;
+    switch (m['couleur']) {
+      case 'rouge':
+        dotColor = AppConstants.criticalColor;
+        label = 'Critique';
+      case 'orange':
+        dotColor = AppConstants.warningColor;
+        label = 'Surveillance';
+      default:
+        dotColor = AppConstants.normalColor;
+        label = 'Normal';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: dotColor.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: dotColor.withValues(alpha: 0.15)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: dotColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: dotColor)),
+                ),
+                const Spacer(),
+                Text('${m['date']} à ${m['heure']}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _buildMiniStat('BPM', '${m['bpm']}', dotColor),
+                _buildMiniStat('SpO₂', '${m['spo2']}%', dotColor),
+                _buildMiniStat('TA', '${m['tension_s']}/${m['tension_d']}', dotColor),
+                _buildMiniStat('Temp', '${m['temperature']}°C', dotColor),
+              ],
+            ),
+            if (m['score'] != null && m['score'].toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Analyse : ${m['score']}',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[600]),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(height: 2),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+        ],
+      ),
     );
   }
 
@@ -315,15 +418,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
         children: [
           Container(width: 10, height: 10, decoration: BoxDecoration(shape: BoxShape.circle, color: dotColor)),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${m['date']} à ${m['heure']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF2D2D2D))),
-              Text('BPM ${m['bpm']} · SpO₂ ${m['spo2']}% · Tension ${m['tension_s']}/${m['tension_d']}', 
-                   style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${m['date']} à ${m['heure']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF2D2D2D))),
+                Text('BPM ${m['bpm']} · SpO₂ ${m['spo2']}% · Tension ${m['tension_s']}/${m['tension_d']} · Temp ${m['temperature']}°C', 
+                     style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+              ],
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
           Text(m['score'] ?? '', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: dotColor)),
         ],
       ),

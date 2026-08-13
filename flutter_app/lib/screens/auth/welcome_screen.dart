@@ -1,9 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants.dart';
 import '../../core/routes.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
+
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  String? _savedPatientPhone;
+  String? _savedDoctorPhone;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedPhones();
+  }
+
+  Future<void> _loadSavedPhones() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _savedPatientPhone = prefs.getString('patient_phone');
+      _savedDoctorPhone = prefs.getString('doctor_phone');
+    });
+  }
+
+  Future<void> _onPatientTap() async {
+    if (_savedPatientPhone != null) {
+      if (!mounted) return;
+      Navigator.pushNamed(context, AppRoutes.pinLogin, arguments: {
+        'phone': _savedPatientPhone,
+      });
+    } else {
+      if (!mounted) return;
+      Navigator.pushNamed(context, AppRoutes.login);
+    }
+  }
+
+  Future<void> _onDoctorTap() async {
+    if (_savedDoctorPhone != null) {
+      if (!mounted) return;
+      Navigator.pushNamed(context, AppRoutes.pinLogin, arguments: {
+        'phone': _savedDoctorPhone,
+        'role': 'doctor',
+      });
+    } else {
+      if (!mounted) return;
+      Navigator.pushNamed(context, AppRoutes.doctorLogin);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +62,6 @@ class WelcomeScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(flex: 2),
-              // Logo
               Container(
                 width: 200,
                 height: 200,
@@ -41,7 +88,6 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              // Title
               Text(
                 AppConstants.appName,
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -58,13 +104,11 @@ class WelcomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const Spacer(flex: 2),
-              // Role buttons
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.login),
+                  onPressed: _onPatientTap,
                   icon: const Icon(Icons.person),
                   label: const Text(
                     "Je suis une patiente",
@@ -77,8 +121,7 @@ class WelcomeScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: OutlinedButton.icon(
-                  onPressed: () =>
-                      Navigator.pushNamed(context, AppRoutes.doctorLogin),
+                  onPressed: _onDoctorTap,
                   icon: const Icon(Icons.medical_services),
                   label: const Text(
                     "Je suis un médecin",

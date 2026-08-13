@@ -40,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     _controller.forward();
 
-    Future.delayed(const Duration(milliseconds: 2800), () {
+    Future.delayed(const Duration(milliseconds: 4000), () {
       if (mounted) {
         Navigator.pushReplacementNamed(context, AppRoutes.welcome);
       }
