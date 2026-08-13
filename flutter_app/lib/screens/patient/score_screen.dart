@@ -8,7 +8,8 @@ import '../../widgets/patient_bottom_nav.dart';
 class ScoreScreen extends StatefulWidget {
   final String phone;
   final Map result;
-  const ScoreScreen({super.key, required this.phone, required this.result});
+  final bool offline;
+  const ScoreScreen({super.key, required this.phone, required this.result, this.offline = false});
 
   @override
   State<ScoreScreen> createState() => _ScoreScreenState();
@@ -266,6 +267,31 @@ class _ScoreScreenState extends State<ScoreScreen> {
       ),
       child: Column(
         children: [
+          if (widget.offline) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: AppConstants.warningColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppConstants.warningColor.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.wifi_off_rounded, color: AppConstants.warningColor, size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Analyse locale approximative (hors ligne). '
+                      'La mesure sera synchronisée au retour du réseau.',
+                      style: TextStyle(fontSize: 12, color: AppConstants.warningColor, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Stack(
             alignment: Alignment.center,
             children: [

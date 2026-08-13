@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants.dart';
 import '../../core/routes.dart';
+import '../../services/offline_measure_service.dart';
 import '../../widgets/patient_bottom_nav.dart';
 
 class SensorScreen extends StatefulWidget {
@@ -17,6 +18,8 @@ class SensorScreen extends StatefulWidget {
 class _SensorScreenState extends State<SensorScreen> {
   bool _isMonitoring = false;
   bool _isAnalyzing = false;
+  bool _isOffline = false;
+  int _pendingCount = 0;
   int _pregnancyWeek = 0;
   Timer? _timer;
 
@@ -29,6 +32,55 @@ class _SensorScreenState extends State<SensorScreen> {
   void initState() {
     super.initState();
     _loadPregnancyWeek();
+    _checkPending();
+    _restoreCachedVitals();
+  }
+
+  Future<void> _restoreCachedVitals() async {
+    final cached = await OfflineMeasureService.getLastVitals();
+    if (cached.isEmpty) return;
+    final bpm = (cached['bpm'] as num?)?.toDouble() ?? 0;
+    final spo2 = (cached['spo2'] as num?)?.toDouble() ?? 0;
+    final temp = (cached['temperature'] as num?)?.toDouble() ?? 0;
+    final ctx = (cached['contractions_par_10min'] as num?)?.toDouble() ?? 0;
+    if (bpm > 0) _bpm.value = bpm;
+    if (spo2 > 0) _spo2.value = spo2;
+    if (temp > 0) _temp.value = temp;
+    _fsr.value = ctx;
+  }
+
+  Future<void> _checkPending() async {
+    final pending = await OfflineMeasureService.getPendingMeasures();
+    if (pending.isEmpty) return;
+    if (!mounted) return;
+    setState(() => _pendingCount = pending.length);
+
+    if (await OfflineMeasureService.isOnline()) {
+      final synced = await OfflineMeasureService.syncPendingMeasures(widget.phone);
+      final remaining = await OfflineMeasureService.getPendingMeasures();
+      if (!mounted) return;
+      setState(() => _pendingCount = remaining.length);
+      if (synced > 0) {
+        _showOfflineInfo('$synced mesure(s) en attente synchronisée(s)');
+      }
+    } else {
+      _showOfflineInfo('${pending.length} mesure(s) en attente de synchronisation');
+    }
+  }
+
+  Future<void> _syncPending() async {
+    try {
+      final synced = await OfflineMeasureService.syncPendingMeasures(widget.phone);
+      final remaining = await OfflineMeasureService.getPendingMeasures();
+      if (mounted) setState(() => _pendingCount = remaining.length);
+      if (synced > 0) {
+        _showOfflineInfo('$synced mesure(s) synchronisée(s)');
+      } else if (remaining.isNotEmpty) {
+        _showError('Toujours hors ligne, réessayez plus tard');
+      }
+    } catch (_) {
+      _showError('Synchronisation impossible');
+    }
   }
 
   Future<void> _loadPregnancyWeek() async {
@@ -63,8 +115,17 @@ class _SensorScreenState extends State<SensorScreen> {
         if (spo2 > 0) _spo2.value = spo2;
         if (temp > 0) _temp.value = temp;
         _fsr.value = ctx;
+        await OfflineMeasureService.saveLastVitals({
+          'bpm': bpm,
+          'spo2': spo2,
+          'temperature': temp,
+          'contractions_par_10min': ctx,
+        });
+        if (_isOffline && mounted) setState(() => _isOffline = false);
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted && _isMonitoring) setState(() => _isOffline = true);
+    }
   }
 
   Future<void> _analyze() async {
@@ -125,8 +186,74 @@ class _SensorScreenState extends State<SensorScreen> {
       }
     } catch (_) {
       setState(() => _isAnalyzing = false);
-      _showError('Erreur de connexion');
+      _analyzeOffline(tensionS, tensionD, contractions);
     }
+  }
+
+  /// Analyse locale quand le réseau est indisponible : la mesure est
+  /// estimée avec des seuils simples puis mise en attente de synchronisation.
+  Future<void> _analyzeOffline(int tensionS, int tensionD, int contractions) async {
+    final bpm = _bpm.value.round();
+    final spo2 = _spo2.value.round();
+    final temp = double.parse(_temp.value.toStringAsFixed(1));
+
+    final anomalies = <String>[];
+    if (bpm > 100 || bpm < 60) anomalies.add('BPM anormal');
+    if (spo2 < 95) anomalies.add('SpO₂ basse');
+    if (temp > 38.0 || temp < 36.0) anomalies.add('Température anormale');
+    if (tensionS >= 140 || tensionD >= 90) anomalies.add('Tension élevée');
+    if (contractions > 4) anomalies.add('Contractions fréquentes');
+
+    String score;
+    String couleur;
+    if (anomalies.length >= 3) {
+      score = 'Eleve';
+      couleur = 'rouge';
+    } else if (anomalies.length == 2) {
+      score = 'Modere';
+      couleur = 'orange';
+    } else if (anomalies.length == 1) {
+      score = 'Modere';
+      couleur = 'orange';
+    } else {
+      score = 'Normale';
+      couleur = 'vert';
+    }
+
+    final now = DateTime.now();
+    final result = {
+      'score': score,
+      'couleur': couleur,
+      'date': now.toIso8601String().substring(0, 10),
+      'heure': '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+    };
+
+    await OfflineMeasureService.savePendingMeasure({
+      'date': result['date'],
+      'heure': result['heure'],
+      'bpm': bpm,
+      'temperature': temp,
+      'spo2': spo2,
+      'tension_s': tensionS,
+      'tension_d': tensionD,
+      'contractions': contractions,
+      'semaine': _pregnancyWeek,
+      'score': score,
+      'couleur': couleur,
+    });
+
+    if (!mounted) return;
+    final pendingCount = await OfflineMeasureService.getPendingMeasures();
+    if (!mounted) return;
+    setState(() => _pendingCount = pendingCount.length);
+    _showOfflineInfo('Réseau indisponible : mesure enregistrée localement (analyse approximative)');
+
+    if (!mounted) return;
+    Navigator.pushNamed(context, AppRoutes.patientScore, arguments: {
+      'phone': widget.phone,
+      'result': result,
+      'offline': true,
+    });
   }
 
   void _showError(String msg) {
@@ -134,6 +261,17 @@ class _SensorScreenState extends State<SensorScreen> {
       SnackBar(
         content: Text(msg),
         backgroundColor: AppConstants.criticalColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
+  }
+
+  void _showOfflineInfo(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: AppConstants.warningColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
@@ -279,6 +417,60 @@ class _SensorScreenState extends State<SensorScreen> {
   Widget _buildSensorGrid() {
     return Column(
       children: [
+        if (_isOffline) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppConstants.warningColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppConstants.warningColor.withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.wifi_off_rounded, color: AppConstants.warningColor, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Hors ligne : les capteurs ne sont pas joignables. '
+                    'Les valeurs affichées peuvent être anciennes.',
+                    style: TextStyle(fontSize: 12, color: AppConstants.warningColor, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (_pendingCount > 0) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppConstants.primaryColor.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.cloud_upload_outlined, color: AppConstants.primaryColor, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '$_pendingCount mesure(s) en attente de synchronisation',
+                    style: const TextStyle(fontSize: 12, color: AppConstants.primaryColor, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: _syncPending,
+                  child: const Text('Synchroniser',
+                    style: TextStyle(fontSize: 12, color: AppConstants.primaryColor, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ],
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
