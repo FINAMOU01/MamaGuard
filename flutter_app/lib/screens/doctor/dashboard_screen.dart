@@ -390,6 +390,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               Navigator.pushNamed(context, AppRoutes.doctorDossier, arguments: {
                 'phone': p['phone'],
                 'name': name,
+                'doctor_phone': widget.phone,
               });
             },
             child: Row(

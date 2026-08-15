@@ -4,6 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /journal/{entryId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     match /alertes/{alertId} {
       allow read: if request.auth != null;

@@ -18,6 +18,7 @@ import '../screens/patient/reminder_screen.dart';
 import '../screens/patient/link_doctor_screen.dart';
 import '../screens/patient/notification_screen.dart';
 import '../screens/patient/alert_history_screen.dart';
+import '../screens/patient/journal_screen.dart';
 import '../screens/doctor/dashboard_screen.dart';
 import '../screens/doctor/registration_screen.dart';
 import '../screens/doctor/pending_screen.dart';
@@ -52,6 +53,7 @@ class AppRoutes {
   static const String patientAppointment = '/patient/appointment';
   static const String patientNotifications = '/patient/notifications';
   static const String patientAlertHistory = '/patient/alert-history';
+  static const String patientJournal = '/patient/journal';
   static const String doctorRegistration = '/doctor/registration';
   static const String doctorLogin = '/doctor/login';
   static const String doctorPending = '/doctor/pending';
@@ -167,6 +169,11 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => PatientAlertHistoryScreen(phone: args?['phone'] as String? ?? ''),
         );
+      case patientJournal:
+        final args = settings.arguments as Map?;
+        return MaterialPageRoute(
+          builder: (_) => JournalScreen(phone: args?['phone'] as String? ?? ''),
+        );
       case doctorRegistration:
         return MaterialPageRoute(
           builder: (_) => const DoctorRegistrationScreen(),
@@ -195,6 +202,7 @@ class AppRoutes {
         return MaterialPageRoute(
           builder: (_) => DoctorDossierScreen(
             phone: args?['phone'] as String? ?? '',
+            doctorPhone: args?['doctor_phone'] as String? ?? '',
             patientName: args?['name'] as String? ?? 'Patiente',
           ),
         );

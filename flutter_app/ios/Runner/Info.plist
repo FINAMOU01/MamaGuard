@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Vos photos de journal restent privées et ne sont visibles que par votre médecin.</string>
 </dict>
 </plist>

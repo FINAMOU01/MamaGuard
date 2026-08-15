@@ -134,6 +134,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildQuickInfo(),
                     const SizedBox(height: 20),
                     _buildMainAction(),
+                    const SizedBox(height: 14),
+                    _buildJournalCard(),
                     const SizedBox(height: 20),
                     _buildSectionTitle('Autres actions'),
                     const SizedBox(height: 12),
@@ -472,6 +474,48 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             Icon(Icons.arrow_forward_ios_rounded, color: Colors.white.withValues(alpha: 0.7), size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJournalCard() {
+    return _TapScale(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.patientJournal, arguments: {'phone': widget.phone}),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFE7F0), Color(0xFFFFF6FA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.6)),
+          boxShadow: [BoxShadow(color: const Color(0xFFE91E63).withValues(alpha: 0.08), blurRadius: 16, offset: const Offset(0, 5))],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(18)),
+              child: const Center(child: Text('📖', style: TextStyle(fontSize: 26))),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Mon journal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D))),
+                  const SizedBox(height: 3),
+                  Text('Une note, une photo… tout reste entre vous et votre médecin.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: Colors.grey[400], size: 16),
           ],
         ),
       ),

@@ -27,6 +27,8 @@ app.register_blueprint(admin_bp)
 
 from routes.pregnancy import pregnancy_bp
 app.register_blueprint(pregnancy_bp)
+from routes.journal import journal_bp
+app.register_blueprint(journal_bp)
 
 atexit.register(lambda: scheduler.shutdown(wait=False))
 

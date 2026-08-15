@@ -6,11 +6,13 @@ import '../../core/routes.dart';
 
 class DoctorDossierScreen extends StatefulWidget {
   final String phone;
+  final String doctorPhone;
   final String patientName;
 
   const DoctorDossierScreen({
     super.key,
     required this.phone,
+    this.doctorPhone = '',
     this.patientName = 'Patiente',
   });
 
@@ -25,12 +27,13 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
   Map<String, dynamic> _profile = {};
   List<Map<String, dynamic>> _measures = [];
   List<Map<String, dynamic>> _alerts = [];
+  List<Map<String, dynamic>> _journal = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadDossier();
   }
 
@@ -60,6 +63,29 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
       }
     } catch (_) {}
     if (mounted) setState(() => _isLoading = false);
+    _loadJournal();
+  }
+
+  Future<void> _loadJournal() async {
+    if (widget.doctorPhone.isEmpty) return;
+    try {
+      final r = await http.post(
+        Uri.parse('${AppConstants.apiBaseUrl}/doctor/patient-journal'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'doctor_phone': widget.doctorPhone,
+          'patient_phone': widget.phone,
+        }),
+      );
+      if (r.statusCode == 200 && mounted) {
+        final data = jsonDecode(r.body);
+        if (data['succes'] == true) {
+          setState(() {
+            _journal = (data['entries'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _markAlertVu(String alertId) async {
@@ -115,6 +141,7 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
                       children: [
                         _buildMeasuresTab(),
                         _buildAlertsTab(),
+                        _buildJournalTab(),
                       ],
                     ),
             ),
@@ -290,6 +317,7 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
         tabs: [
           Tab(text: 'Mesures (${_measures.length})'),
           Tab(text: 'Alertes (${_alerts.length})'),
+          Tab(text: 'Journal (${_journal.length})'),
         ],
       ),
     );
@@ -528,5 +556,129 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildJournalTab() {
+    if (widget.doctorPhone.isEmpty) {
+      return Center(
+        child: Text('Journal non accessible', style: TextStyle(color: Colors.grey[400], fontSize: 15)),
+      );
+    }
+    if (_journal.isEmpty) {
+      return Center(
+        child: Text('Aucune note de journal', style: TextStyle(color: Colors.grey[400], fontSize: 15)),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      itemCount: _journal.length,
+      itemBuilder: (_, i) => _buildJournalCard(_journal[i]),
+    );
+  }
+
+  Widget _buildJournalCard(Map<String, dynamic> e) {
+    final feeling = e['feeling'] as String? ?? '';
+    final text = e['text'] as String? ?? '';
+    final date = e['date'] as String? ?? '';
+    final week = (e['week'] as num?)?.toInt() ?? 0;
+    final photos = (e['photos'] as List?)?.cast<String>() ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDF6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF8BBD0).withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(_formatJournalDate(date),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFE91E63))),
+              ),
+              if (week > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE91E63).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('Semaine $week',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE91E63))),
+                ),
+            ],
+          ),
+          if (feeling.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(feeling, style: const TextStyle(fontSize: 26)),
+          ],
+          if (text.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(text, style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.5)),
+          ],
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 84,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: photos.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) => GestureDetector(
+                  onTap: () => _openJournalPhoto(photos[i]),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(base64Decode(photos[i]), width: 84, height: 84, fit: BoxFit.cover),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey),
+              const SizedBox(width: 5),
+              Text('Note confidentielle partagée par la patiente',
+                style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openJournalPhoto(String base64) {
+    final bytes = base64Decode(base64);
+    Navigator.push(context, MaterialPageRoute(
+      builder: (_) => Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(backgroundColor: Colors.black, foregroundColor: Colors.white),
+        body: Center(
+          child: InteractiveViewer(maxScale: 4, child: Image.memory(bytes, fit: BoxFit.contain)),
+        ),
+      ),
+    ));
+  }
+
+  String _formatJournalDate(String dateStr) {
+    if (dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      const months = [
+        'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+      ];
+      return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
   }
 }
