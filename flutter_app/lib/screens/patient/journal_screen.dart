@@ -421,6 +421,85 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
     } catch (_) {}
   }
 
+  Future<void> _takePhoto() async {
+    try {
+      final file = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 70,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return;
+      setState(() => _photos.add(base64Encode(bytes)));
+    } catch (_) {}
+  }
+
+  void _choosePhotoSource() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFFFFFDF6),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 46, height: 5,
+                decoration: BoxDecoration(color: const Color(0xFFF8BBD0), borderRadius: BorderRadius.circular(10)),
+              ),
+              const SizedBox(height: 16),
+              const Text('Ajouter une photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFF2D2D2D))),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _takePhoto();
+                      },
+                      icon: const Icon(Icons.camera_alt_outlined, color: Color(0xFFE91E63)),
+                      label: const Text('Caméra'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFE91E63),
+                        side: const BorderSide(color: Color(0xFFE91E63)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _pickPhoto();
+                      },
+                      icon: const Icon(Icons.photo_library_outlined, color: Color(0xFFE91E63)),
+                      label: const Text('Galerie'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFE91E63),
+                        side: const BorderSide(color: Color(0xFFE91E63)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final text = _textController.text.trim();
     if (text.isEmpty && _feeling.isEmpty && _photos.isEmpty) return;
@@ -553,26 +632,32 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
               ),
               const SizedBox(height: 6),
               if (_photos.isEmpty)
-                GestureDetector(
-                  onTap: _pickPhoto,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF1F6),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _takePhoto,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1F6),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.camera_alt_outlined, color: Color(0xFFE91E63), size: 20),
+                              const SizedBox(width: 8),
+                              Text('Prendre une photo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFFE91E63))),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.add_a_photo_outlined, color: Color(0xFFE91E63), size: 20),
-                        const SizedBox(width: 8),
-                        Text('Ajouter une photo (optionnel)',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: const Color(0xFFE91E63))),
-                      ],
-                    ),
-                  ),
+                    const SizedBox(width: 10),
+                    _AddPhotoButton(onTap: _pickPhoto),
+                  ],
                 )
               else
                 SizedBox(
@@ -587,7 +672,7 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
                           return const SizedBox.shrink();
                         }
                         return GestureDetector(
-                          onTap: _pickPhoto,
+                          onTap: _choosePhotoSource,
                           child: Container(
                             width: 84, height: 84,
                             decoration: BoxDecoration(
@@ -643,6 +728,36 @@ class _NewNoteSheetState extends State<_NewNoteSheet> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AddPhotoButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPhotoButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 70,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF1F6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF8BBD0), width: 1.2),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.photo_library_outlined, color: Color(0xFFE91E63), size: 20),
+            SizedBox(height: 4),
+            Text('Galerie',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFE91E63))),
+          ],
         ),
       ),
     );

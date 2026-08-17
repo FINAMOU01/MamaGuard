@@ -47,5 +47,7 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Vos photos de journal restent privées et ne sont visibles que par votre médecin.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>La caméra vous permet de prendre une photo pour votre journal de grossesse.</string>
 </dict>
 </plist>
