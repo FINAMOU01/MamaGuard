@@ -8,7 +8,8 @@ pour que les notifications arrivent reellement sur son telephone.
 
 Usage:
     python simulate_esp32.py
-    python simulate_esp32.py --url http://10.11.12.160:5000
+    python simulate_esp32.py --url https://mamaguard-jpeb.onrender.com
+    python simulate_esp32.py --url http://127.0.0.1:5000  (test local)
     python simulate_esp32.py --phone +237653844244
     python simulate_esp32.py --interval 5
 
@@ -102,8 +103,8 @@ def build_payload(vitals, fcm_token):
 def main():
     global PHONE
     parser = argparse.ArgumentParser(description="Simulateur ESP32 MamaGuard")
-    parser.add_argument("--url", default="http://10.11.12.160:5000",
-                        help="URL de l'API Flask")
+    parser.add_argument("--url", default="https://mamaguard-jpeb.onrender.com",
+                        help="URL de l'API (Render par defaut). Pour un test local: --url http://127.0.0.1:5000")
     parser.add_argument("--phone", default=PHONE)
     parser.add_argument("--interval", type=int, default=5,
                         help="Intervalle entre deux envois (secondes)")
