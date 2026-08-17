@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants.dart';
+import '../../services/pdf_report.dart';
 import '../../widgets/patient_bottom_nav.dart';
 
 class ScoreScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _ScoreScreenState extends State<ScoreScreen> {
   String _patientName = '';
   String _doctorPhone = '';
   bool _isSendingSms = false;
+  bool _isExportingPdf = false;
 
   @override
   void initState() {
@@ -116,6 +118,27 @@ class _ScoreScreenState extends State<ScoreScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
+  }
+
+  Future<void> _exportPdf() async {
+    if (_isExportingPdf) return;
+    setState(() => _isExportingPdf = true);
+    try {
+      final bytes = await PdfReportService.buildAnalysisPdf(
+        patientName: _patientName,
+        result: Map<String, dynamic>.from(widget.result),
+      );
+      if (!mounted) return;
+      await PdfReportService.showPdfExportOptions(
+        context,
+        filename: 'rapport_mamaguard.pdf',
+        bytes: bytes,
+      );
+    } catch (_) {
+      if (mounted) _showError('Impossible de générer le PDF');
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
+    }
   }
 
   Color get _riskColor {
@@ -480,6 +503,25 @@ class _ScoreScreenState extends State<ScoreScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isExportingPdf ? null : _exportPdf,
+              icon: _isExportingPdf
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.picture_as_pdf_rounded, size: 18),
+              label: Text(_isExportingPdf ? 'Préparation…' : 'Exporter le rapport en PDF'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppConstants.primaryColor,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppConstants.primaryColor.withValues(alpha: 0.6),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+            ),
           ),
         ],
       ),

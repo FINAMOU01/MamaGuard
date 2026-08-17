@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants.dart';
 import '../../core/routes.dart';
+import '../../services/pdf_report.dart';
 
 class DoctorDossierScreen extends StatefulWidget {
   final String phone;
@@ -86,6 +87,35 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
         }
       }
     } catch (_) {}
+  }
+
+  Future<void> _exportPdf() async {
+    try {
+      final bytes = await PdfReportService.buildDossierPdf(
+        profile: {
+          ..._profile,
+          'phone': widget.phone,
+        },
+        measures: _measures,
+        alerts: _alerts,
+        journal: _journal,
+        doctorName: (_profile['doctor_name'] as String?)?.isNotEmpty == true
+            ? (_profile['doctor_name'] as String?)!
+            : widget.doctorPhone,
+      );
+      if (!mounted) return;
+      await PdfReportService.showPdfExportOptions(
+        context,
+        filename: 'dossier_patiente.pdf',
+        bytes: bytes,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Impossible de générer le PDF'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _markAlertVu(String alertId) async {
@@ -190,7 +220,11 @@ class _DoctorDossierScreenState extends State<DoctorDossierScreen>
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
               ),
               const Spacer(),
-              const SizedBox(width: 48),
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 24),
+                tooltip: 'Exporter le dossier en PDF',
+                onPressed: _exportPdf,
+              ),
             ],
           ),
           const SizedBox(height: 12),
