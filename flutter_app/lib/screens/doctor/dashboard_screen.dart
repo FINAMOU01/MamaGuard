@@ -18,6 +18,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = true;
   int _unreadCount = 0;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _riskFilter = 'tous';
 
   @override
   void initState() {
@@ -101,9 +104,50 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     }
   }
 
-  int get _dangerCount => _patients.where((p) => p['risk_color'] == 'danger').length;
   int get _critiqueCount => _patients.where((p) => p['risk_color'] == 'critique').length;
   int get _surveillanceCount => _patients.where((p) => p['risk_color'] == 'surveillance').length;
+
+  String _normalize(String s) {
+    const accents = {
+      'à': 'a', 'â': 'a', 'ä': 'a', 'á': 'a',
+      'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+      'î': 'i', 'ï': 'i', 'í': 'i',
+      'ô': 'o', 'ö': 'o', 'ó': 'o',
+      'ù': 'u', 'û': 'u', 'ü': 'u', 'ú': 'u',
+      'ç': 'c',
+    };
+    final lower = s.toLowerCase();
+    final buffer = StringBuffer();
+    for (final ch in lower.split('')) {
+      buffer.write(accents[ch] ?? ch);
+    }
+    return buffer.toString();
+  }
+
+  String _riskGroup(String color) {
+    if (color == 'critique' || color == 'danger') return 'critique';
+    if (color == 'surveillance') return 'surveillance';
+    return 'normal';
+  }
+
+  List<Map<String, dynamic>> get _visiblePatients {
+    final q = _normalize(_searchQuery.trim());
+    return _patients.where((p) {
+      if (_riskFilter != 'tous' && _riskGroup(p['risk_color'] as String? ?? 'normal') != _riskFilter) {
+        return false;
+      }
+      if (q.isEmpty) return true;
+      final name = _normalize(p['name'] as String? ?? '');
+      final phone = _normalize(p['phone'] as String? ?? '');
+      return name.contains(q) || phone.contains(q);
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +161,16 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   ? const Center(child: CircularProgressIndicator(color: AppConstants.primaryColor))
                   : _patients.isEmpty
                       ? _buildEmptyState()
-                      : _buildPatientList(),
+                      : Column(
+                          children: [
+                            _buildSearchBar(),
+                            Expanded(
+                              child: _visiblePatients.isEmpty
+                                  ? _buildNoResult()
+                                  : _buildPatientList(),
+                            ),
+                          ],
+                        ),
             ),
           ],
         ),
@@ -128,7 +181,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFFE91E63), Color(0xFFF06292)],
@@ -136,8 +189,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
@@ -152,8 +205,9 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  iconSize: 20,
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                  padding: const EdgeInsets.all(6),
+                  iconSize: 18,
                 ),
               ),
               const SizedBox(width: 8),
@@ -161,22 +215,24 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                 child: Text(
                   'Tableau de bord',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
                 onPressed: _loadPatients,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: const EdgeInsets.all(6),
               ),
               Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 18),
                     onPressed: () {
                       Navigator.pushNamed(context, AppRoutes.doctorNotifications, arguments: {'phone': widget.phone}).then((_) => _loadUnreadCount());
                     },
-                    constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(6),
                   ),
                   if (_unreadCount > 0)
                     Positioned(
@@ -184,23 +240,24 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(color: Color(0xFFB71C1C), shape: BoxShape.circle),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
                         child: Text(
                           _unreadCount > 9 ? '9+' : '$_unreadCount',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
                 ],
               ),
               IconButton(
-                icon: const Icon(Icons.person_rounded, color: Colors.white, size: 22),
+                icon: const Icon(Icons.person_rounded, color: Colors.white, size: 20),
                 onPressed: () => Navigator.pushNamed(context, AppRoutes.doctorProfile, arguments: {'phone': widget.phone}),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: const EdgeInsets.all(6),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Row(
             children: [
               _buildStatCard('Total', _patients.length.toString(), Icons.people_rounded, Colors.white),
@@ -208,8 +265,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               _buildStatCard('Critique', _critiqueCount.toString(), Icons.warning_rounded, AppConstants.criticalColor),
               const SizedBox(width: 10),
               _buildStatCard('Surv.', _surveillanceCount.toString(), Icons.info_rounded, AppConstants.warningColor),
-              const SizedBox(width: 10),
-              _buildStatCard('Danger', _dangerCount.toString(), Icons.gpp_bad_rounded, const Color(0xFFB71C1C)),
             ],
           ),
         ],
@@ -220,17 +275,17 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(height: 4),
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(height: 3),
             Text(value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
             Text(label,
               style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.85))),
           ],
@@ -260,6 +315,111 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
     );
   }
 
+  Widget _buildNoResult() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 12),
+            const Text('Aucun résultat',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey)),
+            const SizedBox(height: 6),
+            Text('Aucune patiente ne correspond à\nvotre recherche.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 3)),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _searchQuery = v),
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(fontSize: 14, color: Color(0xFF2D2D2D)),
+              decoration: InputDecoration(
+                hintText: 'Rechercher par nom ou téléphone…',
+                hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400], size: 22),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.close_rounded, color: Colors.grey[400], size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('tous', 'Tous'),
+                _buildFilterChip('critique', 'Risque élevé'),
+                _buildFilterChip('surveillance', 'Risque modéré'),
+                _buildFilterChip('normal', 'Risque normal'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String key, String label) {
+    final selected = _riskFilter == key;
+    Color color = const Color(0xFF2D2D2D);
+    if (key == 'critique') color = AppConstants.criticalColor;
+    if (key == 'surveillance') color = AppConstants.warningColor;
+    if (key == 'normal') color = AppConstants.normalColor;
+    return GestureDetector(
+      onTap: () => setState(() => _riskFilter = key),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? color : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? color : Colors.grey[200]!,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : color,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPatientList() {
     final sections = _groupPatientsByRisk();
     return RefreshIndicator(
@@ -277,7 +437,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   List<Map<String, dynamic>> _groupPatientsByRisk() {
     const order = {'critique': 0, 'danger': 0, 'surveillance': 1, 'normal': 2};
-    final copy = [..._patients];
+    final copy = [..._visiblePatients];
     copy.sort((a, b) {
       final ca = order[a['risk_color']] ?? 3;
       final cb = order[b['risk_color']] ?? 3;
