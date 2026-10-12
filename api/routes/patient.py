@@ -467,6 +467,7 @@ def device_vitals():
             fsr_raw = num("fsr_raw", 0, 4095)
             fsr_v = num("fsr_voltage", 0, 3.6)
             fsr_r = num("fsr_resistance", 0, 1e8)
+            fsr_contr = num("fsr_contractions", 0, 50)  # contractions detectees par le FSR406
         except ValueError as ve:
             return jsonify({"succes": False, "erreur": str(ve)}), 400
 
@@ -485,7 +486,9 @@ def device_vitals():
         manual = (user.to_dict() or {}).get("pending_manual") or {}
         tension_s = manual.get("tension_s") or None
         tension_d = manual.get("tension_d") or None
-        contractions = manual.get("contractions") if manual else None  # 0 est une saisie valide
+        contr_manual = manual.get("contractions") if manual else None  # 0 est une saisie valide
+        # Total = saisie manuelle + contractions detectees par le FSR406 pendant la session
+        contractions = (contr_manual + int(fsr_contr or 0)) if contr_manual is not None else None
         semaine = manual.get("semaine") or None
         if not semaine:
             _, preg_data, _ = get_active_or_legacy(db, phone)
@@ -507,6 +510,7 @@ def device_vitals():
             "bpm": bpm, "spo2": spo2, "temperature": temp,
             "tension_systolique": tension_s, "tension_diastolique": tension_d,
             "contractions_par_10min": contractions, "semaine_grossesse": semaine,
+            "contractions_manuelles": contr_manual, "contractions_fsr": fsr_contr,
             "fsr_raw": fsr_raw, "fsr_voltage": fsr_v, "fsr_resistance": fsr_r,
             "finger": bool(data.get("finger", False)),
             "manual_source": bool(manual),
@@ -527,6 +531,8 @@ def device_vitals():
             "succes": True, "id": ref.id,
             "score": score, "couleur": couleur,
             "score_calcule": bool(score),
+            "contractions_total": contractions,
+            "contractions_fsr": fsr_contr,
             "manquant": [k for k, v in {"bpm": bpm, "spo2": spo2, "temperature": temp,
                          "tension": tension_s, "contractions": contractions,
                          "semaine": semaine}.items() if v is None],
