@@ -439,6 +439,104 @@ def live_vitals():
         return jsonify({"succes": False, "erreur": str(e)}), 500
 
 
+@patient_bp.route("/device/vitals", methods=["POST"])
+def device_vitals():
+    """Mesures ESP32 (null = invalide) + tension/contractions saisies dans l'app.
+
+    Le score IA n'est calcule que si les 7 parametres sont reels. pending_manual
+    est conserve jusqu'au calcul du score, puis vide.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        phone = data.get("phone")
+        if not phone:
+            return jsonify({"succes": False, "erreur": "Champ requis: 'phone'"}), 400
+
+        def num(key, lo, hi):
+            v = data.get(key)
+            if v is None:
+                return None
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not (lo <= v <= hi):
+                raise ValueError(f"'{key}' invalide")
+            return v
+
+        try:
+            bpm = num("bpm", 20, 250)
+            spo2 = num("spo2", 50, 100)
+            temp = num("temperature", 25, 45)
+            fsr_raw = num("fsr_raw", 0, 4095)
+            fsr_v = num("fsr_voltage", 0, 3.6)
+            fsr_r = num("fsr_resistance", 0, 1e8)
+        except ValueError as ve:
+            return jsonify({"succes": False, "erreur": str(ve)}), 400
+
+        if bpm is None and spo2 is None and temp is None:
+            return jsonify({"succes": False, "erreur": "Aucune mesure valide"}), 422
+
+        db = get_db()
+        if not db:
+            return jsonify({"succes": False, "erreur": "Firebase non configuré"}), 500
+
+        user_ref = db.collection("users").document(phone)
+        user = user_ref.get()
+        if not user.exists:
+            return jsonify({"succes": False, "erreur": "Patiente inconnue"}), 404
+
+        manual = (user.to_dict() or {}).get("pending_manual") or {}
+        tension_s = manual.get("tension_s") or None
+        tension_d = manual.get("tension_d") or None
+        contractions = manual.get("contractions") if manual else None  # 0 est une saisie valide
+        semaine = manual.get("semaine") or None
+        if not semaine:
+            _, preg_data, _ = get_active_or_legacy(db, phone)
+            semaine = (compute_pregnancy_week(preg_data) or None) if preg_data else None
+
+        score, couleur = None, None
+        complete = all(v is not None for v in
+                       (bpm, spo2, temp, tension_s, tension_d, contractions, semaine))
+        if complete:
+            try:
+                result, _ = _predictor.predict(bpm, temp, spo2, tension_s, tension_d,
+                                               contractions, semaine)
+                score = result.get("score")
+                couleur = _predictor.build_alert(score).get("couleur")
+            except Exception as e:
+                current_app.logger.warning(f"Device predict error: {e}")
+
+        doc = {
+            "bpm": bpm, "spo2": spo2, "temperature": temp,
+            "tension_systolique": tension_s, "tension_diastolique": tension_d,
+            "contractions_par_10min": contractions, "semaine_grossesse": semaine,
+            "fsr_raw": fsr_raw, "fsr_voltage": fsr_v, "fsr_resistance": fsr_r,
+            "finger": bool(data.get("finger", False)),
+            "manual_source": bool(manual),
+            "score": score, "couleur": couleur,
+            "device_id": str(data.get("device_id", ""))[:64],
+            "source": "esp32",
+            "timestamp": firestore.SERVER_TIMESTAMP,
+        }
+        user_ref.collection("live").document("current").set(doc)  # lu par /patient/vitals/live
+        ref = user_ref.collection("device_vitals").document()      # historique brut
+        ref.set(doc)
+
+        # Session terminee : la saisie manuelle a ete utilisee pour le score.
+        if score:
+            user_ref.update({"pending_manual": None})
+
+        return jsonify({
+            "succes": True, "id": ref.id,
+            "score": score, "couleur": couleur,
+            "score_calcule": bool(score),
+            "manquant": [k for k, v in {"bpm": bpm, "spo2": spo2, "temperature": temp,
+                         "tension": tension_s, "contractions": contractions,
+                         "semaine": semaine}.items() if v is None],
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"Device vitals error: {e}")
+        return jsonify({"succes": False, "erreur": str(e)}), 500
+
+
 @patient_bp.route("/patient/manual-measure/save", methods=["POST"])
 def save_manual_measure():
     try:
