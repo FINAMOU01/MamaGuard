@@ -97,6 +97,7 @@ def profile():
                 "pregnancy_method": preg_data.get("pregnancy_method", "") if preg_data else "",
                 "lmp_date": preg_data.get("lmp_date", "") if preg_data else "",
                 "manual_week": week,
+                "pregnancy_week": week,  # semaine calculee automatiquement
                 "reference_date": preg_data.get("reference_date", "") if preg_data else "",
                 "due_date": preg_data.get("due_date", "") if preg_data else "",
                 "has_active_pregnancy": preg_id is not None,
@@ -441,11 +442,7 @@ def live_vitals():
 
 @patient_bp.route("/device/vitals", methods=["POST"])
 def device_vitals():
-    """Mesures ESP32 (null = invalide) + tension/contractions saisies dans l'app.
-
-    Le score IA n'est calcule que si les 7 parametres sont reels. pending_manual
-    est conserve jusqu'au calcul du score, puis vide.
-    """
+    """Valeurs des capteurs ESP32 (null = invalide). Aucun score n'est calcule ici."""
     try:
         data = request.get_json(silent=True) or {}
         phone = data.get("phone")
@@ -467,7 +464,8 @@ def device_vitals():
             fsr_raw = num("fsr_raw", 0, 4095)
             fsr_v = num("fsr_voltage", 0, 3.6)
             fsr_r = num("fsr_resistance", 0, 1e8)
-            fsr_contr = num("fsr_contractions", 0, 50)  # contractions detectees par le FSR406
+            fsr_contr = num("fsr_contractions", 0, 50)  # contractions FSR406 sur les 10 dernieres min
+            fsr_window = num("fsr_window_s", 0, 600)    # duree reellement observee
         except ValueError as ve:
             return jsonify({"succes": False, "erreur": str(ve)}), 400
 
@@ -483,38 +481,15 @@ def device_vitals():
         if not user.exists:
             return jsonify({"succes": False, "erreur": "Patiente inconnue"}), 404
 
-        manual = (user.to_dict() or {}).get("pending_manual") or {}
-        tension_s = manual.get("tension_s") or None
-        tension_d = manual.get("tension_d") or None
-        contr_manual = manual.get("contractions") if manual else None  # 0 est une saisie valide
-        # Total = saisie manuelle + contractions detectees par le FSR406 pendant la session
-        contractions = (contr_manual + int(fsr_contr or 0)) if contr_manual is not None else None
-        semaine = manual.get("semaine") or None
-        if not semaine:
-            _, preg_data, _ = get_active_or_legacy(db, phone)
-            semaine = (compute_pregnancy_week(preg_data) or None) if preg_data else None
-
-        score, couleur = None, None
-        complete = all(v is not None for v in
-                       (bpm, spo2, temp, tension_s, tension_d, contractions, semaine))
-        if complete:
-            try:
-                result, _ = _predictor.predict(bpm, temp, spo2, tension_s, tension_d,
-                                               contractions, semaine)
-                score = result.get("score")
-                couleur = _predictor.build_alert(score).get("couleur")
-            except Exception as e:
-                current_app.logger.warning(f"Device predict error: {e}")
-
+        # L'ESP32 n'envoie que les valeurs des capteurs : aucun score ici.
+        # Le score est calcule par le modele IA (/predict) quand la patiente
+        # clique sur "Analyser mes signes" dans l'application.
         doc = {
             "bpm": bpm, "spo2": spo2, "temperature": temp,
-            "tension_systolique": tension_s, "tension_diastolique": tension_d,
-            "contractions_par_10min": contractions, "semaine_grossesse": semaine,
-            "contractions_manuelles": contr_manual, "contractions_fsr": fsr_contr,
+            "contractions_fsr": fsr_contr,                # contractions FSR sur 10 min
+            "fsr_window_s": fsr_window,                   # duree observee (max 600 s)
             "fsr_raw": fsr_raw, "fsr_voltage": fsr_v, "fsr_resistance": fsr_r,
             "finger": bool(data.get("finger", False)),
-            "manual_source": bool(manual),
-            "score": score, "couleur": couleur,
             "device_id": str(data.get("device_id", ""))[:64],
             "source": "esp32",
             "timestamp": firestore.SERVER_TIMESTAMP,
@@ -523,19 +498,12 @@ def device_vitals():
         ref = user_ref.collection("device_vitals").document()      # historique brut
         ref.set(doc)
 
-        # Session terminee : la saisie manuelle a ete utilisee pour le score.
-        if score:
-            user_ref.update({"pending_manual": None})
-
         return jsonify({
             "succes": True, "id": ref.id,
-            "score": score, "couleur": couleur,
-            "score_calcule": bool(score),
-            "contractions_total": contractions,
             "contractions_fsr": fsr_contr,
-            "manquant": [k for k, v in {"bpm": bpm, "spo2": spo2, "temperature": temp,
-                         "tension": tension_s, "contractions": contractions,
-                         "semaine": semaine}.items() if v is None],
+            "fsr_window_s": fsr_window,
+            "manquant": [k for k, v in {"bpm": bpm, "spo2": spo2,
+                         "temperature": temp}.items() if v is None],
         }), 201
 
     except Exception as e:

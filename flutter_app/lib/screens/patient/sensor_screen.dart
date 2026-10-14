@@ -26,7 +26,9 @@ class _SensorScreenState extends State<SensorScreen> {
   final _bpm = ValueNotifier<double>(0);
   final _spo2 = ValueNotifier<double>(0);
   final _temp = ValueNotifier<double>(0);
-  final _fsr = ValueNotifier<double>(0);
+  // Contractions detectees par le FSR406 sur les 10 dernieres minutes (-1 = inconnu)
+  final _fsr = ValueNotifier<double>(-1);
+  int _fsrWindowS = 0; // duree d'observation reelle du FSR (max 600 s)
 
   @override
   void initState() {
@@ -42,11 +44,11 @@ class _SensorScreenState extends State<SensorScreen> {
     final bpm = (cached['bpm'] as num?)?.toDouble() ?? 0;
     final spo2 = (cached['spo2'] as num?)?.toDouble() ?? 0;
     final temp = (cached['temperature'] as num?)?.toDouble() ?? 0;
-    final ctx = (cached['contractions_par_10min'] as num?)?.toDouble() ?? 0;
+    final ctx = (cached['contractions_fsr'] as num?)?.toDouble();
     if (bpm > 0) _bpm.value = bpm;
     if (spo2 > 0) _spo2.value = spo2;
     if (temp > 0) _temp.value = temp;
-    _fsr.value = ctx;
+    _fsr.value = ctx ?? -1;
   }
 
   Future<void> _checkPending() async {
@@ -107,19 +109,22 @@ class _SensorScreenState extends State<SensorScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final v = data['vitals'] as Map? ?? {};
+        // null = mesure invalide (doigt retire, capteur absent...) -> affichee "--"
         final bpm = (v['bpm'] as num?)?.toDouble() ?? 0;
         final spo2 = (v['spo2'] as num?)?.toDouble() ?? 0;
         final temp = (v['temperature'] as num?)?.toDouble() ?? 0;
-        final ctx = (v['contractions_par_10min'] as num?)?.toDouble() ?? 0;
-        if (bpm > 0) _bpm.value = bpm;
-        if (spo2 > 0) _spo2.value = spo2;
-        if (temp > 0) _temp.value = temp;
-        _fsr.value = ctx;
+        final ctx = (v['contractions_fsr'] as num?)?.toDouble();
+        _bpm.value = bpm;
+        _spo2.value = spo2;
+        _temp.value = temp;
+        _fsr.value = ctx ?? -1;
+        final window = (v['fsr_window_s'] as num?)?.toInt() ?? 0;
+        if (window != _fsrWindowS && mounted) setState(() => _fsrWindowS = window);
         await OfflineMeasureService.saveLastVitals({
           'bpm': bpm,
           'spo2': spo2,
           'temperature': temp,
-          'contractions_par_10min': ctx,
+          'contractions_fsr': ctx,
         });
         if (_isOffline && mounted) setState(() => _isOffline = false);
       }
@@ -129,15 +134,19 @@ class _SensorScreenState extends State<SensorScreen> {
   }
 
   Future<void> _analyze() async {
-    if (_bpm.value == 0) {
-      _showError('Démarrez le moniteur d\'abord');
+    if (_bpm.value == 0 || _spo2.value == 0 || _temp.value == 0) {
+      _showError('Mesures des capteurs incomplètes (BPM, SpO₂, température). '
+          'Démarrez le moniteur et gardez le doigt sur le capteur.');
       return;
     }
     setState(() => _isAnalyzing = true);
 
+    // Semaine de grossesse : calculée automatiquement par l'API (profil)
+    if (_pregnancyWeek == 0) await _loadPregnancyWeek();
+
     int tensionS = 0;
     int tensionD = 0;
-    int contractions = _fsr.value.round();
+    int? manualCtx;
     try {
       final manualResp = await http.post(
         Uri.parse('${AppConstants.apiBaseUrl}/patient/manual-measure'),
@@ -148,10 +157,23 @@ class _SensorScreenState extends State<SensorScreen> {
         final manual = jsonDecode(manualResp.body)['pending_manual'] as Map? ?? {};
         tensionS = (manual['tension_s'] as num?)?.toInt() ?? 0;
         tensionD = (manual['tension_d'] as num?)?.toInt() ?? 0;
-        final manualCtx = (manual['contractions'] as num?)?.toInt() ?? 0;
-        if (manualCtx > 0) contractions = manualCtx;
+        manualCtx = (manual['contractions'] as num?)?.toInt();
       }
     } catch (_) {}
+
+    if (tensionS == 0 || tensionD == 0) {
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+      _showError('Saisissez d\'abord votre tension et vos contractions ressenties.');
+      return;
+    }
+
+    // Contractions sur 10 min : le maximum entre la saisie de la patiente et
+    // la détection du FSR406 (pas d'addition, pour ne pas compter deux fois).
+    final fsrCtx = _fsr.value >= 0 ? _fsr.value.round() : null;
+    int contractions = 0;
+    if (manualCtx != null) contractions = manualCtx;
+    if (fsrCtx != null && fsrCtx > contractions) contractions = fsrCtx;
 
     try {
       final response = await http.post(
@@ -333,8 +355,9 @@ class _SensorScreenState extends State<SensorScreen> {
       : v > 38 || v < 36 ? AppConstants.criticalColor
       : AppConstants.warningColor;
 
-  Color _getFsrColor(double v) => v < 40 ? AppConstants.normalColor
-      : v < 70 ? AppConstants.warningColor
+  // Contractions / 10 min (seuils indicatifs, a valider par les soignants)
+  Color _getFsrColor(double v) => v <= 3 ? AppConstants.normalColor
+      : v < 5 ? AppConstants.warningColor
       : AppConstants.criticalColor;
 
   double _toPercent(double value, double max) => (value / max).clamp(0.0, 1.0);
@@ -508,12 +531,15 @@ class _SensorScreenState extends State<SensorScreen> {
                 ),
                 _buildSensorCard(
                   icon: Icons.timeline_rounded,
-                  label: 'FSR',
-                  unit: '',
+                  label: _fsrWindowS > 0 && _fsrWindowS < 600
+                      ? 'Contractions (${(_fsrWindowS / 60).floor()}/10 min observées)'
+                      : 'Contractions (capteur)',
+                  unit: '/10 min',
                   valueNotifier: _fsr,
                   formatValue: (v) => v.toStringAsFixed(0),
                   colorFn: _getFsrColor,
-                  maxVal: 100,
+                  maxVal: 10,
+                  zeroIsValid: true,
                 ),
               ],
             ),
@@ -609,12 +635,14 @@ class _SensorScreenState extends State<SensorScreen> {
     required String Function(double) formatValue,
     required Color Function(double) colorFn,
     required double maxVal,
+    bool zeroIsValid = false, // 0 contraction est une vraie valeur
   }) {
     return ValueListenableBuilder<double>(
       valueListenable: valueNotifier,
       builder: (context, value, _) {
-        final color = value > 0 ? colorFn(value) : Colors.grey[300]!;
-        final percent = value > 0 ? _toPercent(value, maxVal) : 0.0;
+        final hasValue = zeroIsValid ? value >= 0 : value > 0;
+        final color = hasValue ? colorFn(value) : Colors.grey[300]!;
+        final percent = hasValue ? _toPercent(value, maxVal) : 0.0;
         return Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -661,7 +689,7 @@ class _SensorScreenState extends State<SensorScreen> {
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: Text(
-                  value > 0 ? '${formatValue(value)} $unit'.trim() : '-- $unit'.trim(),
+                  hasValue ? '${formatValue(value)} $unit'.trim() : '-- $unit'.trim(),
                   key: ValueKey(value),
                   style: TextStyle(
                     fontSize: 20,
