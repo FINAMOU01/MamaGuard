@@ -46,30 +46,22 @@ class EscalationService:
         )
 
         actions = []
-        actions.append({
-            "type": "sms",
-            "to": "patient",
-            "phone": patient_info.get("phone"),
-            "message": messages["patient"],
-            "status": "pret"
-        })
-
-        for contact in patient_info.get("emergency_contacts", []):
+        if patient_info.get("platform_doctor_token"):
             actions.append({
-                "type": "sms",
-                "to": contact.get("relation", "contact"),
-                "phone": contact.get("phone"),
-                "message": messages["emergency_contact"],
-                "status": "pret"
+                "type": "push",
+                "to": "medecin_plateforme",
+                "phone": patient_info.get("platform_doctor_phone"),
+                "etapes": ["T+0", "T+10", "T+20"],
             })
 
-        if patient_info.get("doctor_phone"):
+        # Pas de SMS à la patiente : elle voit l'alerte dans l'application.
+        for r in patient_info.get("sms_recipients", []):
             actions.append({
                 "type": "sms",
-                "to": "medecin",
-                "phone": patient_info["doctor_phone"],
-                "message": messages["doctor"],
-                "status": "pret"
+                "to": r.get("label", r.get("role")),
+                "phone": r.get("phone"),
+                "message": messages["doctor"] if r.get("role") == "doctor" else messages["emergency_contact"],
+                "etapes": ["T+0", "T+10", "T+20"],
             })
 
         return {

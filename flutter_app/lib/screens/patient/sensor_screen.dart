@@ -193,6 +193,7 @@ class _SensorScreenState extends State<SensorScreen> {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         _saveMeasure(result, tensionS, tensionD, contractions);
+        _sendAlertIfNeeded(result);
         http.post(
           Uri.parse('${AppConstants.apiBaseUrl}/patient/manual-measure/clear'),
           headers: {'Content-Type': 'application/json'},
@@ -298,6 +299,23 @@ class _SensorScreenState extends State<SensorScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
+  }
+
+  /// Risque Modere ou Eleve : déclenche l'alerte (push au médecin de la
+  /// plateforme, SMS aux contacts selon le niveau, relances T+10 / T+20).
+  /// Les contacts sont lus par l'API dans le profil de la patiente.
+  void _sendAlertIfNeeded(Map result) {
+    final score = result['score'];
+    if (score != 'Modere' && score != 'Eleve') return;
+    http.post(
+      Uri.parse('${AppConstants.apiBaseUrl}/alert'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': widget.phone,
+        'score': score,
+        'alertes': result['alertes'] ?? [],
+      }),
+    ).catchError((_) => http.Response('', 503));
   }
 
   void _saveMeasure(Map result, int tensionS, int tensionD, int contractions) {

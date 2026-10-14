@@ -7,7 +7,7 @@ from services.predictor import PredictorService
 from services.sms_service import SmsService
 from services.fcm_service import FcmService
 from services.firebase_service import get_db
-from services.scheduler_service import schedule_step, cancel_pending_steps
+from services.scheduler_service import schedule_step, cancel_pending_steps, send_escalation_notifications
 from utils.thresholds import analyze_parameters
 
 alert_bp = Blueprint("alert", __name__)
@@ -17,11 +17,11 @@ sms_service = SmsService()
 fcm_service = FcmService()
 
 
-def _notify_doctor(db, patient_info, score_risque):
-    """Envoie un FCM personnalisé au médecin de la patiente."""
+def _resolve_platform_doctor(db, patient_info):
+    """Retourne (telephone, token FCM) du médecin de la plateforme lié à la patiente."""
     try:
         if not db:
-            return
+            return None, None
         doctor_phone = patient_info.get("doctor_phone")
         if not doctor_phone and patient_info.get("phone"):
             links = list(db.collection("patient_links")
@@ -30,22 +30,37 @@ def _notify_doctor(db, patient_info, score_risque):
             if links:
                 doctor_phone = links[0].to_dict().get("doctor_phone")
         if not doctor_phone:
-            return
+            return None, None
         doctor_docs = list(db.collection("doctors").where("phone", "==", doctor_phone).limit(1).stream())
         if not doctor_docs:
-            return
-        doctor_token = doctor_docs[0].to_dict().get("fcm_token")
-        if not doctor_token:
-            return
-        fcm_service.send_doctor_alert(
-            doctor_phone,
-            doctor_token,
-            patient_info.get("patient_name", "Patiente"),
-            score_risque,
-        )
+            return doctor_phone, None
+        return doctor_phone, doctor_docs[0].to_dict().get("fcm_token")
     except Exception:
         import logging
-        logging.getLogger(__name__).warning("Doctor alert notification failed", exc_info=True)
+        logging.getLogger(__name__).warning("Doctor lookup failed", exc_info=True)
+        return None, None
+
+
+def _sms_recipients(contacts, score_risque):
+    """Destinataires SMS selon le niveau de risque.
+
+    - Contact 'doctor' (médecin traitant hors plateforme) : Modere et Eleve.
+    - Autres contacts d'urgence (conjoint, personne de confiance...) : Eleve uniquement.
+    - La patiente ne reçoit jamais de SMS (elle voit l'alerte dans l'application).
+    """
+    recipients = []
+    for c in contacts or []:
+        phone = (c.get("phone") or "").strip()
+        if not phone:
+            continue
+        is_doctor = c.get("type") == "doctor"
+        if is_doctor or score_risque == "Eleve":
+            recipients.append({
+                "phone": phone,
+                "role": "doctor" if is_doctor else "contact",
+                "label": c.get("label") or c.get("relation") or c.get("type") or "contact",
+            })
+    return recipients
 
 
 @alert_bp.route("/alert", methods=["POST"])
@@ -93,8 +108,28 @@ def alert():
                 "timestamp": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             })
 
-        # --- Écrire dans Firestore ---
         db = get_db()
+
+        # Contacts, nom et token : pris dans Firestore si l'appelant ne les fournit pas (application)
+        if db and patient_info.get("phone") and (
+                not patient_info.get("emergency_contacts") or not patient_info.get("patient_name")
+                or not fcm_token):
+            user_doc = db.collection("users").document(patient_info["phone"]).get()
+            user_data = user_doc.to_dict() if user_doc.exists else {}
+            if not patient_info.get("emergency_contacts"):
+                patient_info["emergency_contacts"] = user_data.get("emergency_contacts", [])
+            if not patient_info.get("patient_name"):
+                patient_info["patient_name"] = user_data.get("name") or "Patiente"
+            if not fcm_token:
+                fcm_token = user_data.get("fcm_token")
+
+        doctor_phone, doctor_token = _resolve_platform_doctor(db, patient_info)
+        patient_info["platform_doctor_phone"] = doctor_phone
+        patient_info["platform_doctor_token"] = doctor_token
+        sms_recipients = _sms_recipients(patient_info.get("emergency_contacts"), score_risque)
+        patient_info["sms_recipients"] = sms_recipients
+
+        # --- Écrire dans Firestore ---
         firestore_id = None
         if db:
             alert_doc = {
@@ -104,7 +139,8 @@ def alert():
                 "score": score_risque,
                 "alertes": alertes,
                 "emergencyContacts": patient_info.get("emergency_contacts"),
-                "doctorPhone": patient_info.get("doctor_phone"),
+                "smsRecipients": sms_recipients,
+                "doctorPhone": doctor_phone,
                 "fcmToken": fcm_token,
                 "vu": False,
                 "escalated": True,
@@ -117,34 +153,27 @@ def alert():
             doc_ref = db.collection("alertes").add(alert_doc)
             firestore_id = doc_ref[1].id
 
-        # --- T+0 : FCM push + SMS patient ---
+        # --- T+0 : push à la patiente (pas de SMS : elle voit l'alerte dans l'app) ---
         if fcm_token:
             fcm_service.send_alert(fcm_token, firestore_id, score_risque, alertes, patient_info.get("patient_name"))
 
-        patient_msg = (
-            f"MamaGuard ALERTE: {patient_info.get('patient_name')}, "
-            f"votre risque est '{score_risque}'. {', '.join(alertes[:3])}. "
-            f"Consultez un medecin immediatement."
-        )
-        sms_service.send(patient_info.get("phone"), patient_msg)
-
-        # --- Notifier le médecin (FCM personnalisé) ---
-        _notify_doctor(db, patient_info, score_risque)
+        # --- T+0 : push au médecin de la plateforme + SMS aux contacts ---
+        send_escalation_notifications(patient_info, score_risque, alertes)
 
         if db and firestore_id:
             db.collection("alertes").document(firestore_id).update({
                 "t0Sent": True,
             })
 
-        # --- Planifier T+10 et T+20 ---
-        if patient_info.get("emergency_contacts"):
+        # --- Relances T+10 et T+20 (annulées si l'alerte est vue) ---
+        if firestore_id and (doctor_token or sms_recipients):
             schedule_step(firestore_id, "t10", 10, patient_info, score_risque, alertes)
-        if patient_info.get("doctor_phone"):
             schedule_step(firestore_id, "t20", 20, patient_info, score_risque, alertes)
 
         # --- Réponse ---
         result = escalation.escalate(patient_info, score_risque, alertes)
         result["firestore_id"] = firestore_id
+        result["medecin_plateforme_notifie"] = bool(doctor_token)
         return jsonify(result)
 
     except Exception as e:
