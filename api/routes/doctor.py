@@ -591,30 +591,30 @@ def get_patient_dossier():
             })
 
         alerts = []
-        try:
-            alert_docs = (
-                db.collection("alertes")
-                .where("phone", "==", phone)
-                .order_by("vuAt", direction=firestore.Query.DESCENDING)
-                .limit(20)
-                .get()
-            )
-        except Exception:
-            alert_docs = (
-                db.collection("alertes")
-                .where("phone", "==", phone)
-                .limit(20)
-                .get()
-            )
-        for doc in alert_docs:
+        # Pas de order_by("vuAt") : Firestore exclut les documents sans ce champ,
+        # donc les alertes NON vues (sans vuAt) disparaissaient de la liste.
+        # On récupère toutes les alertes de la patiente puis on trie en Python.
+        alert_docs = (
+            db.collection("alertes")
+            .where("phone", "==", phone)
+            .get()
+        )
+        sorted_docs = sorted(
+            alert_docs,
+            key=lambda d: (d.to_dict() or {}).get("createdAt") or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )[:20]
+        for doc in sorted_docs:
             a = doc.to_dict()
             vu_ts = a.get("vuAt")
+            created = a.get("createdAt")
             alerts.append({
                 "id": doc.id,
                 "score": a.get("score", ""),
                 "alertes": a.get("alertes", []),
                 "vu": a.get("vu", False),
                 "status": a.get("status", ""),
+                "createdAt": created.isoformat() if hasattr(created, "isoformat") else str(created) if created else "",
                 "vuAt": vu_ts.isoformat() if hasattr(vu_ts, "isoformat") else str(vu_ts) if vu_ts else "",
             })
 

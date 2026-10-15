@@ -165,6 +165,23 @@ def alert():
                 "t0Sent": True,
             })
 
+        # --- Notification dans l'application du médecin (cloche / liste) ---
+        if db and doctor_phone:
+            try:
+                db.collection("doctors").document(doctor_phone).collection("notifications").document().set({
+                    "type": "risk_alert",
+                    "title": f"Alerte : risque {score_risque}",
+                    "message": f"Risque {score_risque} détecté chez {patient_info.get('patient_name') or 'une patiente'}. "
+                               f"Ouvrez son dossier pour marquer l'alerte comme vue.",
+                    "alert_id": firestore_id,
+                    "patient_phone": patient_info.get("phone"),
+                    "lu": False,
+                    "created_at": SERVER_TIMESTAMP,
+                })
+            except Exception:
+                import logging
+                logging.getLogger(__name__).warning("Doctor in-app notification failed", exc_info=True)
+
         # --- Relances T+10 et T+20 (annulées si l'alerte est vue) ---
         if firestore_id and (doctor_token or sms_recipients):
             schedule_step(firestore_id, "t10", 10, patient_info, score_risque, alertes)
